@@ -1,4 +1,4 @@
-# Instagram Tools — Install, use, build
+# PACMANGRAM — Install, use, build
 
 🌐 **English** · [Türkçe](USAGE.tr.md) · [← back to README](../README.md)
 
@@ -10,10 +10,10 @@ Contents: [1. Install (ready-made exe)](#1-install-ready-made-exe) · [2. First 
 
 There is **nothing to install** and Python is **not** needed.
 
-1. **Click to download:** [**InstagramTools.exe**](https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe) (about 28 MB). It always points to the newest release; all versions are on the [Releases page](https://github.com/R0YC0LD/instagram-tools/releases).
+1. **Click to download:** [**Pacmangram.exe**](https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe) (about 28 MB). It always points to the newest release; all versions are on the [Releases page](https://github.com/R0YC0LD/pacmangram/releases).
 2. Put the file anywhere (Desktop, Documents…) and **double-click it**.
 3. *Optional:* compare the file's SHA-256 with `SHA256.txt` on the release page  
-   (`Get-FileHash .\InstagramTools.exe -Algorithm SHA256` in PowerShell).
+   (`Get-FileHash .\Pacmangram.exe -Algorithm SHA256` in PowerShell).
 
 **"Windows protected your PC" (SmartScreen)?** The exe is not code-signed (that costs money), so Windows may warn about an unknown publisher. Click **More info → Run anyway**. You can inspect the whole source in this repository and build the exe yourself (section 6) if you prefer.
 
@@ -55,7 +55,7 @@ Pick a chat on **Select chat** (double-click or *Select this chat*). **Messages*
 Optional: *Also unsend my own messages before deleting* (very slow, but the other person then loses them too). Without it the other person still sees the chat on their side.
 
 ### Chat backup
-1. Choose a **Backup folder** (default: `Documents\Instagram Tools\Backups`) and tick what to download: images (default), videos, voice messages.
+1. Choose a **Backup folder** (default: `Documents\PACMANGRAM\Backups`) and tick what to download: images (default), videos, voice messages.
 2. **Load chats**, select the ones you want (Ctrl/Shift click, or *Select all*).
 3. **Back up selected.**
 
@@ -82,17 +82,17 @@ Shows name, user ID, **when the account was created**, its age, country, former 
 |---|---|
 | Settings, protected lists, saved session, log | `%LOCALAPPDATA%\IGDMTool\` (paste it into the Explorer address bar) |
 | Log file | `%LOCALAPPDATA%\IGDMTool\igdmtool.log` (or the *Open log file* link in the app) |
-| Chat backups | the folder you chose (default `Documents\Instagram Tools\Backups`) |
+| Chat backups | the folder you chose (default `Documents\PACMANGRAM\Backups`) |
 
-**Uninstall:** use **Log out and delete session** in the app (removes the saved login), delete `InstagramTools.exe`, and optionally delete the `%LOCALAPPDATA%\IGDMTool` folder. Nothing is written to the registry.
+**Uninstall:** use **Log out and delete session** in the app (removes the saved login), delete `Pacmangram.exe`, and optionally delete the `%LOCALAPPDATA%\IGDMTool` folder. Nothing is written to the registry.
 
 ## 5. Run from source
 
 Needs Windows, [Python 3.12](https://www.python.org/downloads/) (tick *Add python.exe to PATH*) and Git.
 
 ```powershell
-git clone https://github.com/R0YC0LD/instagram-tools.git
-cd instagram-tools
+git clone https://github.com/R0YC0LD/pacmangram.git
+cd pacmangram
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python src\igdm_launcher.py
@@ -101,12 +101,12 @@ python -m venv .venv
 ## 6. Build the exe yourself
 
 ```powershell
-git clone https://github.com/R0YC0LD/instagram-tools.git
-cd instagram-tools
+git clone https://github.com/R0YC0LD/pacmangram.git
+cd pacmangram
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-The script creates `.venv`, installs the dependencies, redraws the icon, **runs the 231 tests**, and builds a single-file, no-console exe with PyInstaller. Result: `dist\InstagramTools.exe` plus `dist\SHA256.txt` (about 28 MB; the first build takes a few minutes). Use `-SkipTests` to skip the tests.
+The script creates `.venv`, installs the dependencies, redraws the icon, **runs the 231 tests**, and builds a single-file, no-console exe with PyInstaller. Result: `dist\Pacmangram.exe` plus `dist\SHA256.txt` (about 28 MB; the first build takes a few minutes). Use `-SkipTests` to skip the tests.
 
 Only the tests: `.\.venv\Scripts\python tests\run_all.py` (they use a fake client and never contact Instagram).
 
@@ -120,4 +120,4 @@ Only the tests: `.\.venv\Scripts\python tests\run_all.py` (they use a fake clien
 | Instagram warning / rate limit | The app rests by itself. If it stopped, wait a few hours and scan again. Use **Safe** speed for long lists. |
 | "The app is already running" | Only one copy can run. Close the other one (check Task Manager). |
 | Antivirus flags the exe | Unsigned PyInstaller exes are sometimes flagged by mistake. Compare the SHA-256, or build it yourself (section 6). |
-| Something else | Open the log (`%LOCALAPPDATA%\IGDMTool\igdmtool.log`) and create an [issue](https://github.com/R0YC0LD/instagram-tools/issues) — **remove usernames and never post your `sessionid`**. |
+| Something else | Open the log (`%LOCALAPPDATA%\IGDMTool\igdmtool.log`) and create an [issue](https://github.com/R0YC0LD/pacmangram/issues) — **remove usernames and never post your `sessionid`**. |

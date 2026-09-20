@@ -72,7 +72,7 @@ def pump(cond=lambda: True, t=30):
     return cond()
 app.var_sid.set("1234567890:" + "A" * 40); app.do_login_session(); pump(lambda: app.client is not None); pump(lambda: not app.busy)
 saved_tab, backup, account = app.bulk_tabs[3], app.bulk_tabs[4], app.bulk_tabs[5]
-check("window title is English", root.title().startswith("Instagram Tools v"))
+check("window title is English", root.title().startswith("PACMANGRAM v"))
 
 # ---- saved posts
 saved_tab.scan(); pump(lambda: not app.busy and len(saved_tab.items) == 5)
@@ -87,7 +87,7 @@ check("backup: one folder per person", sorted(os.listdir(BK)) == ["friend0", "fr
 f0 = os.path.join(BK, "friend0")
 check("backup: English file and sub-folder names (chat.txt, images, voice_messages)", os.path.exists(os.path.join(f0, "chat.txt")) and os.path.isdir(os.path.join(f0, "images")) and os.path.isdir(os.path.join(f0, "voice_messages")), os.listdir(f0))
 txt = open(os.path.join(f0, "chat.txt"), encoding="utf-8-sig").read()
-check("backup: chat.txt header is English", "Instagram Tools · Chat backup" in txt and "Messages    : 5" in txt and "Participants: friend0" in txt, txt[:300])
+check("backup: chat.txt header is English", "PACMANGRAM · Chat backup" in txt and "Messages    : 5" in txt and "Participants: friend0" in txt, txt[:300])
 check("backup: chat.txt lines use English labels", "[Like]" in txt and "Hi there" in txt and "me:" in txt.lower(), txt)
 check("backup: status row says Done", "Done" in backup.tv.set("100", "status"), backup.tv.set("100", "status"))
 check("backup: summary dialog is English", any("Backed-up chats" in i or "Backed up" in i or "finished" in i.lower() for i in infos), infos)

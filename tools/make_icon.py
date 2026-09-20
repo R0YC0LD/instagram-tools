@@ -1,5 +1,5 @@
 """
-make_icon.py  -  draws the application icon: Pacman eating an Instagram-style camera glyph.
+make_icon.py  -  draws the PACMANGRAM icon: a Pacman painted in the Instagram gradient.
 
 Outputs (next to the project):
   assets/app.ico          multi-size Windows icon (used for the .exe)
@@ -21,90 +21,67 @@ ROOT = os.path.dirname(HERE)
 S = 1024            # master canvas
 SS = 2              # supersampling factor for anti-aliasing
 
+# Instagram-style gradient: yellow > orange > pink > purple > blue
+IG_STOPS = [(0.0, (254, 218, 117)), (0.28, (250, 126, 30)), (0.52, (214, 41, 118)), (0.76, (150, 47, 191)),
+            (1.0, (79, 91, 213))]
 
-def gradient_square(size, stops):
-    """Diagonal gradient (bottom-left -> top-right), stops = [(t, (r, g, b)), ...]."""
+
+def ig_gradient(size):
+    """Starts bottom-left (yellow) and sweeps to the top-right (blue), like the Instagram logo."""
     img = Image.new("RGB", (size, size))
     px = img.load()
+    span = math.hypot(size, size) * 0.98
+    ox, oy = size * 0.12, size * 0.98
     for y in range(size):
         for x in range(size):
-            t = ((x / (size - 1)) + (1 - y / (size - 1))) / 2
-            for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
+            t = min(1.0, math.hypot(x - ox, y - oy) / span)
+            for (t0, c0), (t1, c1) in zip(IG_STOPS, IG_STOPS[1:]):
                 if t0 <= t <= t1:
-                    k = (t - t0) / (t1 - t0) if t1 > t0 else 0
+                    k = (t - t0) / (t1 - t0)
                     px[x, y] = tuple(int(c0[i] + (c1[i] - c0[i]) * k) for i in range(3))
                     break
     return img
 
 
-def rounded_mask(size, box, radius):
-    m = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(m).rounded_rectangle(box, radius=radius, fill=255)
-    return m
-
-
 def draw_master():
+    """A Pacman in the Instagram gradient; its eye is a white camera-lens ring; two pellets follow the mouth."""
     n = S * SS
     k = SS
-    canvas = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    cx, cy, r = 400 * k, 512 * k, 380 * k            # body
+    half = math.radians(37)                          # half mouth opening (mouth points to the right)
 
-    # --- Instagram-style glyph (rounded square, gradient, ring + dot) --------------------------
-    gx0, gy0, gx1, gy1 = 372 * k, 190 * k, 972 * k, 790 * k
-    side = gx1 - gx0
-    grad = gradient_square(side, [(0.0, (254, 213, 89)), (0.25, (247, 119, 55)), (0.5, (221, 42, 123)),
-                                  (0.78, (129, 52, 175)), (1.0, (81, 91, 212))]).convert("RGBA")
-    glyph = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    glyph.paste(grad, (gx0, gy0))
-    mask = rounded_mask(n, (gx0, gy0, gx1, gy1), 165 * k)
-    glyph.putalpha(mask)
-    d = ImageDraw.Draw(glyph)
-    cx, cy = (gx0 + gx1) // 2, (gy0 + gy1) // 2
-    r_out, r_in = 150 * k, 108 * k
-    d.ellipse((cx - r_out, cy - r_out, cx + r_out, cy + r_out), outline=(255, 255, 255, 255), width=r_out - r_in)
-    dot_r = 24 * k
-    dx, dy = gx1 - 118 * k, gy0 + 118 * k
-    d.ellipse((dx - dot_r, dy - dot_r, dx + dot_r, dy + dot_r), fill=(255, 255, 255, 255))
-    # outer square outline (the "frame" of the camera glyph) stays part of the gradient, so just keep it solid.
-
-    # --- bite: Pacman's body removes a disc from the glyph (plus a small gap) --------------------
-    pc_x, pc_y, pr = 300 * k, 512 * k, 292 * k
-    bite = Image.new("L", (n, n), 255)
-    ImageDraw.Draw(bite).ellipse((pc_x - pr - 26 * k, pc_y - pr - 26 * k, pc_x + pr + 26 * k, pc_y + pr + 26 * k), fill=0)
-    glyph.putalpha(ImageChops.multiply(glyph.getchannel("A"), bite))
-    canvas.alpha_composite(glyph)
-
-    # --- Pacman ------------------------------------------------------------------------------
-    pac = Image.new("RGBA", (n, n), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(pac)
-    yellow = (255, 204, 0, 255)
-    pd.ellipse((pc_x - pr, pc_y - pr, pc_x + pr, pc_y + pr), fill=yellow)
-    # mouth wedge opening to the right (chomping the glyph)
-    half = math.radians(36)
-    far = pr * 2
-    pts = [(pc_x, pc_y),
-           (pc_x + far * math.cos(-half), pc_y + far * math.sin(-half)),
-           (pc_x + far * math.cos(half), pc_y + far * math.sin(half))]
+    body = Image.new("L", (n, n), 0)
+    ImageDraw.Draw(body).ellipse((cx - r, cy - r, cx + r, cy + r), fill=255)
+    far = r * 3
     wedge = Image.new("L", (n, n), 255)
-    ImageDraw.Draw(wedge).polygon(pts, fill=0)
-    pac.putalpha(ImageChops.multiply(pac.getchannel("A"), wedge))
-    ed = ImageDraw.Draw(pac)
-    ex, ey, er = pc_x + 20 * k, pc_y - 160 * k, 34 * k
-    ed.ellipse((ex - er, ey - er, ex + er, ey + er), fill=(30, 30, 40, 255))
-    ed.ellipse((ex - er // 3 + 6 * k, ey - er // 2, ex + er // 3 + 6 * k, ey - er // 6), fill=(255, 255, 255, 230))
-    canvas.alpha_composite(pac)
+    ImageDraw.Draw(wedge).polygon(
+        [(cx, cy), (cx + far * math.cos(-half), cy + far * math.sin(-half)),
+         (cx + far * math.cos(half), cy + far * math.sin(half))], fill=0)
+    mask = ImageChops.multiply(body, wedge)
 
-    # --- pellets on the way (little dots between Pacman's mouth and the glyph) ------------------
-    dd = ImageDraw.Draw(canvas)
-    for i, px in enumerate((650, 730)):
-        pass  # (kept minimal: the glyph is already right next to the mouth)
+    grad = ig_gradient(2 * r).convert("RGBA")
+    pac = Image.new("RGBA", (n, n), (0, 0, 0, 0))
+    pac.paste(grad, (cx - r, cy - r))
+    pac.putalpha(mask)
 
-    # breathing room: shrink to 88% and centre (bounding box of the artwork, not the canvas)
-    art = canvas.resize((S, S), Image.LANCZOS)
-    box = art.getbbox()
-    art = art.crop(box)
-    scale = (S * 0.86) / max(art.size)
-    art = art.resize((int(art.width * scale), int(art.height * scale)), Image.LANCZOS)
-    out = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(pac)
+    # eye = Instagram lens: white ring with a centre dot
+    ex, ey = cx + 40 * k, cy - 195 * k
+    ro, ri = 62 * k, 38 * k
+    d.ellipse((ex - ro, ey - ro, ex + ro, ey + ro), fill=(255, 255, 255, 255))
+    d.ellipse((ex - ri, ey - ri, ex + ri, ey + ri), fill=(150, 47, 191, 255))
+    d.ellipse((ex - 17 * k, ey - 17 * k, ex + 17 * k, ey + 17 * k), fill=(255, 255, 255, 255))
+
+    # pellets in the gradient colours, following the mouth
+    for px_, col in ((815, (250, 126, 30)), (925, (214, 41, 118))):
+        pr = 34 * k
+        d.ellipse((px_ * k - pr, cy - pr, px_ * k + pr, cy + pr), fill=col + (255,))
+
+    art = pac.resize((S, S), Image.LANCZOS)
+    art = art.crop(art.getbbox())
+    scale = (S * 0.90) / max(art.size)
+    art = art.resize((max(1, int(art.width * scale)), max(1, int(art.height * scale))), Image.LANCZOS)
+    out = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     out.alpha_composite(art, ((S - art.width) // 2, (S - art.height) // 2))
     return out
 

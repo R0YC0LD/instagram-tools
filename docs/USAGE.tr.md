@@ -1,4 +1,4 @@
-# Instagram Araçları — Kurulum, kullanım, derleme
+# PACMANGRAM — Kurulum, kullanım, derleme
 
 🌐 [English](USAGE.md) · **Türkçe** · [← README'ye dön](../README.tr.md)
 
@@ -10,10 +10,10 @@
 
 **Kurulum yok**, Python da **gerekmez**.
 
-1. **Tıkla ve indir:** [**InstagramTools.exe**](https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe) (yaklaşık 28 MB). Bağlantı hep en yeni sürümü indirir; tüm sürümler [Releases sayfasında](https://github.com/R0YC0LD/instagram-tools/releases).
+1. **Tıkla ve indir:** [**Pacmangram.exe**](https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe) (yaklaşık 28 MB). Bağlantı hep en yeni sürümü indirir; tüm sürümler [Releases sayfasında](https://github.com/R0YC0LD/pacmangram/releases).
 2. Dosyayı istediğin yere (Masaüstü, Belgeler…) koy ve **çift tıkla**.
 3. *İsteğe bağlı:* dosyanın SHA-256 değerini sürüm sayfasındaki `SHA256.txt` ile karşılaştır  
-   (PowerShell'de `Get-FileHash .\InstagramTools.exe -Algorithm SHA256`).
+   (PowerShell'de `Get-FileHash .\Pacmangram.exe -Algorithm SHA256`).
 
 **"Windows bilgisayarınızı korudu" (SmartScreen) uyarısı mı çıktı?** Exe dijital olarak imzalı değil (imza ücretlidir), bu yüzden Windows "bilinmeyen yayıncı" uyarısı verebilir. **Ek bilgi → Yine de çalıştır**'a tıkla. İstersen kaynak kodun tamamı bu depoda; exe'yi kendin de derleyebilirsin (bölüm 6).
 
@@ -55,7 +55,7 @@ Tüm temizlik araçları aynı şekilde çalışır: **tara → planı kontrol e
 İsteğe bağlı: *Silmeden önce kendi mesajlarımı da geri çek* (çok yavaş; karşı taraftan da kaybolur). Bu seçenek kapalıysa karşı taraf sohbeti kendi tarafında görmeye devam eder.
 
 ### Sohbet yedekle
-1. **Yedek klasörü**nü seç (varsayılan: `Belgeler\Instagram Araçları\Yedekler`) ve indirilecekleri işaretle: görseller (varsayılan), videolar, sesli mesajlar.
+1. **Yedek klasörü**nü seç (varsayılan: `Belgeler\PACMANGRAM\Yedekler`) ve indirilecekleri işaretle: görseller (varsayılan), videolar, sesli mesajlar.
 2. **Sohbetleri yükle**, istediklerini seç (Ctrl/Shift ile ya da *Hepsini seç*).
 3. **Seçilenleri yedekle.**
 
@@ -82,17 +82,17 @@ Ad, kullanıcı ID, **hesabın ne zaman açıldığı**, yaşı, ülke, eski kul
 |---|---|
 | Ayarlar, koruma listeleri, kayıtlı oturum, günlük | `%LOCALAPPDATA%\IGDMTool\` (Gezgin adres çubuğuna yapıştır) |
 | Günlük dosyası | `%LOCALAPPDATA%\IGDMTool\igdmtool.log` (ya da uygulamadaki *Günlük dosyasını aç* bağlantısı) |
-| Sohbet yedekleri | seçtiğin klasör (varsayılan `Belgeler\Instagram Araçları\Yedekler`) |
+| Sohbet yedekleri | seçtiğin klasör (varsayılan `Belgeler\PACMANGRAM\Yedekler`) |
 
-**Kaldırma:** uygulamada **Çıkış yap ve oturumu sil**'e bas (kayıtlı girişi siler), `InstagramTools.exe` dosyasını sil, istersen `%LOCALAPPDATA%\IGDMTool` klasörünü de sil. Kayıt defterine (registry) hiçbir şey yazılmaz.
+**Kaldırma:** uygulamada **Çıkış yap ve oturumu sil**'e bas (kayıtlı girişi siler), `Pacmangram.exe` dosyasını sil, istersen `%LOCALAPPDATA%\IGDMTool` klasörünü de sil. Kayıt defterine (registry) hiçbir şey yazılmaz.
 
 ## 5. Kaynaktan çalıştırma
 
 Windows, [Python 3.12](https://www.python.org/downloads/) (*Add python.exe to PATH* işaretli) ve Git gerekir.
 
 ```powershell
-git clone https://github.com/R0YC0LD/instagram-tools.git
-cd instagram-tools
+git clone https://github.com/R0YC0LD/pacmangram.git
+cd pacmangram
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python src\igdm_launcher.py
@@ -101,12 +101,12 @@ python -m venv .venv
 ## 6. Exe'yi kendin derle
 
 ```powershell
-git clone https://github.com/R0YC0LD/instagram-tools.git
-cd instagram-tools
+git clone https://github.com/R0YC0LD/pacmangram.git
+cd pacmangram
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-Betik `.venv` oluşturur, bağımlılıkları kurar, ikonu yeniden çizer, **231 testi çalıştırır** ve PyInstaller ile tek dosyalık, konsolsuz bir exe üretir. Sonuç: `dist\InstagramTools.exe` ve `dist\SHA256.txt` (yaklaşık 28 MB; ilk derleme birkaç dakika sürer). Testleri atlamak için `-SkipTests` ekle.
+Betik `.venv` oluşturur, bağımlılıkları kurar, ikonu yeniden çizer, **231 testi çalıştırır** ve PyInstaller ile tek dosyalık, konsolsuz bir exe üretir. Sonuç: `dist\Pacmangram.exe` ve `dist\SHA256.txt` (yaklaşık 28 MB; ilk derleme birkaç dakika sürer). Testleri atlamak için `-SkipTests` ekle.
 
 Yalnızca testler: `.\.venv\Scripts\python tests\run_all.py` (sahte istemci kullanır, Instagram'a hiç bağlanmaz).
 
@@ -120,4 +120,4 @@ Yalnızca testler: `.\.venv\Scripts\python tests\run_all.py` (sahte istemci kull
 | Instagram uyarısı / sınırlama | Program kendiliğinden dinlenir. Durduysa birkaç saat bekleyip yeniden tara. Uzun listelerde **Güvenli** hızı kullan. |
 | "Program zaten açık" | Aynı anda tek kopya çalışır. Diğerini kapat (Görev Yöneticisi'ne bak). |
 | Antivirüs exe'yi işaretledi | İmzasız PyInstaller exe'leri bazen yanlışlıkla işaretlenir. SHA-256'yı karşılaştır ya da kendin derle (bölüm 6). |
-| Başka bir şey | Günlüğü aç (`%LOCALAPPDATA%\IGDMTool\igdmtool.log`) ve bir [issue](https://github.com/R0YC0LD/instagram-tools/issues) aç — **kullanıcı adlarını sil ve `sessionid` değerini asla paylaşma**. |
+| Başka bir şey | Günlüğü aç (`%LOCALAPPDATA%\IGDMTool\igdmtool.log`) ve bir [issue](https://github.com/R0YC0LD/pacmangram/issues) aç — **kullanıcı adlarını sil ve `sessionid` değerini asla paylaşma**. |

@@ -40,7 +40,7 @@ def safe_name(name, fallback="sohbet", maxlen=80):
 
 def default_backup_dir():
     docs = os.path.join(os.path.expanduser("~"), "Documents")
-    return os.path.join(docs if os.path.isdir(docs) else os.path.expanduser("~"), tr("Instagram Araçları"), tr("Yedekler"))
+    return os.path.join(docs if os.path.isdir(docs) else os.path.expanduser("~"), app_title(), tr("Yedekler"))
 
 
 _EXT_OK = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".m4a", ".mp3", ".aac", ".mov", ".heic"}
@@ -504,7 +504,7 @@ class BackupTab:
 
     def _write_txt(self, folder, thread, name, items, users, files):
         me = self.app.my_username or "ben"
-        lines = [tr("Instagram Araçları · Sohbet yedeği"),
+        lines = [tr("PACMANGRAM · Sohbet yedeği"),
                  tr("Sohbet     : {0}", name),
                  tr("Katılımcı  : {0}", (', '.join(sorted(set(users.values())) + [me]) if users else me)),
                  tr("Yedek tarihi: {0:%Y-%m-%d %H:%M:%S}", datetime.now()),

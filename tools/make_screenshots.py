@@ -76,7 +76,7 @@ SAMPLE = {
                   "8 gibi uygun mu", "Tamam görüşürüz", "Geç kalma :)", "Yoldayım", "Geldim", "Neredesin?",
                   "Buradayım", "Peki"],
         "blocked": "Kişi", "blk": "engelli", "caption": "Örnek gönderi açıklaması numara {0} #instagram",
-        "acct": "hesap", "bio": "Pacman'in Instagram'ı", "backup_dir": r"C:\Users\Demo\Belgeler\Instagram Yedekleri",
+        "acct": "hesap", "bio": "Pacman'in Instagram'ı", "backup_dir": r"C:\Users\Demo\Belgeler\PACMANGRAM\Yedekler",
     },
     "en": {
         "names": ["alice.smith", "mike_k", "Weekend group", "emma", "john.doe", "lily_s", "ben", "sophie.a",
@@ -86,7 +86,7 @@ SAMPLE = {
                   "Around 8?", "Okay, see you", "Don't be late :)", "On my way", "I'm here", "Where are you?",
                   "Right here", "Fine"],
         "blocked": "Person", "blk": "blocked", "caption": "Sample post caption number {0} #instagram",
-        "acct": "account", "bio": "Pacman's Instagram", "backup_dir": r"C:\Users\Demo\Documents\Instagram Backups",
+        "acct": "account", "bio": "Pacman's Instagram", "backup_dir": r"C:\Users\Demo\Documents\PACMANGRAM\Backups",
     },
 }
 S = SAMPLE["tr"]

@@ -17,7 +17,7 @@ LANGS = (("tr", "Türkçe"), ("en", "English"))
 CODES = tuple(c for c, _ in LANGS)
 NAMES = dict(LANGS)
 
-APP_NAMES = {"tr": "Instagram Araçları", "en": "Instagram Tools"}
+APP_NAMES = {"tr": "PACMANGRAM", "en": "PACMANGRAM"}
 
 _APP_DIR = os.path.join(os.environ.get("LOCALAPPDATA") or os.path.expanduser("~"), "IGDMTool")
 _state = {"lang": "tr"}

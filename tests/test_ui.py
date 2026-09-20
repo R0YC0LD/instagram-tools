@@ -34,7 +34,7 @@ pump()
 
 # ---- window / icon / theme
 check("window icon file is written and valid .ico", os.path.exists(ui.icon_path()) and open(ui.icon_path(), "rb").read(4) == b"\x00\x00\x01\x00")
-check("window title carries the version", root.title() == f"Instagram Araçları v{C.VERSION}")
+check("window title carries the version", root.title() == f"PACMANGRAM v{C.VERSION}")
 check("theme is clam with hidden notebook tabs", ttk.Style().theme_use() == "clam" and str(app.nb.cget("style")) == "Nav.TNotebook")
 check("heading style is really bold 15pt (not overridden by option db)", "bold" in str(ttk.Style().lookup("H.TLabel", "font")) or "Bold" in str(ttk.Style().lookup("H.TLabel", "font")))
 check("modern checkbox indicator element exists", "modern.indicator" in ttk.Style().element_names())

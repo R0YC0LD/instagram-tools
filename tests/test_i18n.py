@@ -38,7 +38,7 @@ for code in I.CODES:
 check("app names exist for every language", all(c in I.APP_NAMES for c in I.CODES))
 check("tr() fills placeholders and remembers the Turkish source", I.tr("{0} sohbet bulundu.", 3) == "3 sohbet bulundu." and I.tr("{0} sohbet bulundu.", 3).src == "3 sohbet bulundu.")
 I.set_language("en")
-check("tr() in English", I.tr("{0} sohbet bulundu.", 3) == "3 chats found." and I.app_title() == "Instagram Tools")
+check("tr() in English", I.tr("{0} sohbet bulundu.", 3) == "3 chats found." and I.app_title() == "PACMANGRAM")
 check("a broken placeholder never crashes tr()", str(I.tr("Yok {9}", 1)) == "Yok {9}")
 I.set_language("tr"); I._missing.clear()
 
@@ -73,7 +73,7 @@ def settle(t=0.2):
     end = time.time() + t
     while time.time() < end: root.update(); real_sleep(0.01)
 
-check("starts in Turkish by default", I.get_language() == "tr" and root.title().startswith("Instagram Araçları"))
+check("starts in Turkish by default", I.get_language() == "tr" and root.title().startswith("PACMANGRAM"))
 app.var_sid.set("1234567890:" + "A" * 40); app.do_login_session(); pump(lambda: app.client is not None); pump(lambda: not app.busy)
 client = app.client
 app.nb.select(5); settle()
@@ -84,7 +84,7 @@ app.busy = False; infos.clear()
 check("change to the same language does nothing", app.change_language("tr") is False)
 app.cmb_lang.set("English"); app.var_lang_disp.set("English"); app.cmb_lang.event_generate("<<ComboboxSelected>>"); settle(0.5)
 check("choosing English in the sidebar switches the language", I.get_language() == "en")
-check("window title is English", root.title().startswith("Instagram Tools v"), root.title())
+check("window title is English", root.title().startswith("PACMANGRAM v"), root.title())
 check("login survives the rebuild (same client, no new login)", app.client is client and app.my_username == "me")
 check("the page you were on is still open", app.nb.index(app.nb.select()) == 5)
 sb = app.sidebar
@@ -159,7 +159,7 @@ check("an even number of switches ends in English again", I.get_language() == "e
 
 # ------------------------------------------------------------------ back to Turkish
 app.var_lang_disp.set("Türkçe"); app.cmb_lang.event_generate("<<ComboboxSelected>>"); settle(0.5)
-check("switch back to Turkish", I.get_language() == "tr" and root.title().startswith("Instagram Araçları") and app.client is client)
+check("switch back to Turkish", I.get_language() == "tr" and root.title().startswith("PACMANGRAM") and app.client is client)
 check("Turkish sidebar is back", "Engeller" in [str(app.sidebar.rows[i]["text"].cget("text")) for i in sorted(app.sidebar.rows)])
 check("settings say 'tr' again", json.load(open(g.SETTINGS_FILE, encoding="utf-8")).get("language") == "tr")
 check("all pages usable after two rebuilds", all(app.sidebar._state(i) == "normal" for i in range(10)))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 igdm_app.py
-Graphical Instagram DM cleaner (Turkish UI).
+PACMANGRAM main window (English / Turkish UI).
 
 Reuses the hardened core in igdm_core.py: importing it installs the network
 allowlist (Instagram/Facebook hosts only) and gives us the DPAPI-encrypted

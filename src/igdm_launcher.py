@@ -19,7 +19,7 @@ from igdm_intro import Intro
 from igdm_perf import responsive_ui
 from igdm_i18n import tr, app_title, set_language, initial_language
 
-APP_ID = "OnurTeryakioglu.InstagramTools.31"
+APP_ID = "Pacmangram.App.32"
 
 
 def single_instance():

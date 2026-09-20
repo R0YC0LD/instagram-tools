@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/icon.png" width="128" alt="Instagram simgesini yiyen Pacman">
+<img src="docs/icon.png" width="128" alt="PACMANGRAM logosu: Instagram renklerinde bir Pacman">
 
-# Instagram Araçları
+# PACMANGRAM
 
-**Pacman, Instagram'ı yesin.** Kendi hesabın için Windows aracı: DM, story, engel, beğeni ve kaydedilenleri yavaş, güvenli ve tamamen otonom temizler; sohbetlerini metin dosyası + görsel olarak yedekler; hesabının ne zaman açıldığını gösterir.
+**Pacman, Instagram dağınıklığını yesin.** PACMANGRAM, kendi hesabın için bir Windows araç seti: DM, story, engel, beğeni ve kaydedilenleri yavaş, güvenli ve tamamen otonom temizler; sohbetlerini metin dosyası + görsel olarak yedekler; hesabının ne zaman açıldığını gösterir.
 
 🌐 [English](README.md) · **Türkçe** &nbsp;—&nbsp; uygulamanın kendisi de iki dilde çalışır, sol menüden anında değiştirilir.
 
@@ -18,7 +18,7 @@
 <img src="docs/intro-tr.gif" width="560" alt="Açılış ekranı: kayan credits ve Pacman">
 
 <p align="center">
-<a href="https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe"><img src="https://img.shields.io/badge/%E2%AC%87%20%C4%B0ND%C4%B0R-InstagramTools.exe-2ea44f?style=for-the-badge" alt="InstagramTools.exe indir"></a>
+<a href="https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe"><img src="https://img.shields.io/badge/%E2%AC%87%20%C4%B0ND%C4%B0R-Pacmangram.exe-2ea44f?style=for-the-badge" alt="Pacmangram.exe indir"></a>
 <br><sub>Tıkla, indir, dosyaya çift tıkla. Kurulum yok, Python yok. &nbsp;·&nbsp; <a href="docs/USAGE.tr.md"><b>Tam kılavuz: kurulum · kullanım · derleme</b></a></sub>
 </p>
 
@@ -97,7 +97,7 @@ Her temizlik aracında aynı akış vardır: **tara → planı gör → onayla �
 
 ## 🚀 Hızlı başlangıç
 
-1. **İndirmek için tıkla:** [**InstagramTools.exe**](https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe) (yaklaşık 28 MB, Python gerekmez; tüm sürümler [Releases](../../releases) sayfasında).
+1. **İndirmek için tıkla:** [**Pacmangram.exe**](https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe) (yaklaşık 28 MB, Python gerekmez; tüm sürümler [Releases](../../releases) sayfasında).
 2. **Çift tıkla.** Kurulum yok. Windows *"Bilgisayarınızı korudu"* uyarısı verirse **Ek bilgi → Yine de çalıştır**'a tıkla (exe imzasız; kaynağı burada okuyabilir ya da [kendin derleyebilirsin](docs/USAGE.tr.md#6-exeyi-kendin-derle)).
 3. Açılış ekranından sonra **Giriş** sayfası gelir. Giriş yöntemlerinden birini seç:
 
@@ -186,8 +186,8 @@ Sol alttaki **Hız profili** tüm araçlar için geçerlidir. Süreler her sefer
 ## 🛠️ Kaynaktan çalıştırma
 
 ```powershell
-git clone https://github.com/R0YC0LD/instagram-tools.git
-cd instagram-tools
+git clone https://github.com/R0YC0LD/pacmangram.git
+cd pacmangram
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python src\igdm_launcher.py
@@ -196,7 +196,7 @@ python -m venv .venv
 ### .exe derleme
 
 ```powershell
-.\build.ps1            # testleri çalıştırır ve dist\InstagramTools.exe üretir
+.\build.ps1            # testleri çalıştırır ve dist\Pacmangram.exe üretir
 .\build.ps1 -SkipTests # testleri atlar
 ```
 
@@ -230,7 +230,7 @@ tools/               make_icon.py, make_screenshots.py, i18n_keys.py
 
 ## ⚠️ Sorumluluk reddi
 
-Bu proje **resmî değildir**; Instagram / Meta ile hiçbir bağlantısı yoktur. Instagram'la, resmî olmayan (özel) API'si üzerinden konuşur. Bu tür araçlar Instagram'ın Kullanım Şartları'na aykırı olabilir ve hesabın geçici kısıtlanmasına ya da kapatılmasına yol açabilir. **Kullanım tamamen kendi sorumluluğundadır**; yazar hiçbir zarardan sorumlu tutulamaz. Yalnızca **kendi hesabında** kullan. *Instagram* adı ve logosu Meta Platforms, Inc.'in tescilli markasıdır; uygulama ikonu bu proje için sıfırdan çizilmiş bir çizimdir.
+Bu proje **resmî değildir**; Instagram / Meta ile hiçbir bağlantısı yoktur. Instagram'la, resmî olmayan (özel) API'si üzerinden konuşur. Bu tür araçlar Instagram'ın Kullanım Şartları'na aykırı olabilir ve hesabın geçici kısıtlanmasına ya da kapatılmasına yol açabilir. **Kullanım tamamen kendi sorumluluğundadır**; yazar hiçbir zarardan sorumlu tutulamaz. Yalnızca **kendi hesabında** kullan. *Instagram* adı ve logosu Meta Platforms, Inc.'in tescilli markasıdır; PACMANGRAM adı ve ikonu yazara ait özgün çalışmalardır.
 
 Silme işlemleri (mesaj geri çekme, sohbet silme, story silme, beğeni/kayıt kaldırma, engel kaldırma) **geri alınamaz**. Program bu yüzden yazılı onay ister.
 

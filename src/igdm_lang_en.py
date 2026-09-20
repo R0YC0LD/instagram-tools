@@ -174,7 +174,6 @@ CATALOG = {
         "Instagram temporarily limited / warned the account. Wait a few hours and try again.",
     "Bağlantı sorunu: internet bağlantını kontrol et (işlem bağlantı gelince kendiliğinden yeniden denenir).":
         "Connection problem: check your internet connection (the task retries by itself once you are back online).",
-    "Instagram Araçları": "Instagram Tools",
     "Yedekler": "Backups",
     "Sesli mesaj": "Voice message",
     "   (tepkiler: {0})": "   (reactions: {0})",
@@ -192,7 +191,7 @@ CATALOG = {
     "gorseller": "images",
     "videolar": "videos",
     "sesli_mesajlar": "voice_messages",
-    "Instagram Araçları · Sohbet yedeği": "Instagram Tools · Chat backup",
+    "PACMANGRAM · Sohbet yedeği": "PACMANGRAM · Chat backup",
     "Sohbet     : {0}": "Chat        : {0}",
     "Katılımcı  : {0}": "Participants: {0}",
     "Yedek tarihi: {0:%Y-%m-%d %H:%M:%S}": "Backup date : {0:%Y-%m-%d %H:%M:%S}",

@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="docs/icon.png" width="128" alt="Pacman eating the Instagram glyph">
+<img src="docs/icon.png" width="128" alt="PACMANGRAM logo: a Pacman in Instagram colours">
 
-# Instagram Tools
+# PACMANGRAM
 
-**Let Pacman eat Instagram.** A Windows toolkit for your own account: clean DMs, stories, blocks, likes and saved posts slowly, safely and fully automatically, back up your chats to text files + images, and see when your account was created.
+**Let Pacman eat your Instagram clutter.** PACMANGRAM is a Windows toolkit for your own account: clean DMs, stories, blocks, likes and saved posts slowly, safely and fully automatically, back up your chats to text files + images, and see when your account was created.
 
 🌐 **English** · [Türkçe](README.tr.md) &nbsp;—&nbsp; the app itself speaks both, switch live in the sidebar.
 
@@ -18,7 +18,7 @@
 <img src="docs/intro-en.gif" width="560" alt="Intro screen: scrolling credits and Pacman">
 
 <p align="center">
-<a href="https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe"><img src="https://img.shields.io/badge/%E2%AC%87%20DOWNLOAD-InstagramTools.exe-2ea44f?style=for-the-badge" alt="Download InstagramTools.exe"></a>
+<a href="https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe"><img src="https://img.shields.io/badge/%E2%AC%87%20DOWNLOAD-Pacmangram.exe-2ea44f?style=for-the-badge" alt="Download Pacmangram.exe"></a>
 <br><sub>Click, then double-click the file. No installation, no Python. &nbsp;·&nbsp; <a href="docs/USAGE.md"><b>Full guide: install · use · build</b></a></sub>
 </p>
 
@@ -97,7 +97,7 @@ Every cleanup tool follows the same flow: **scan → review the plan → confirm
 
 ## 🚀 Quick start
 
-1. **Click here to download:** [**InstagramTools.exe**](https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe) (about 28 MB, no Python needed; all versions are on the [Releases](../../releases) page).
+1. **Click here to download:** [**Pacmangram.exe**](https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe) (about 28 MB, no Python needed; all versions are on the [Releases](../../releases) page).
 2. **Double-click it.** No installation. If Windows shows *"Windows protected your PC"*, click **More info → Run anyway** (the exe is unsigned; you can read the source here or [build it yourself](docs/USAGE.md#6-build-the-exe-yourself)).
 3. After the intro the **Login** page opens. Pick one of the login methods:
 
@@ -185,8 +185,8 @@ The **Speed profile** box in the sidebar applies to all tools. Delays are random
 ## 🛠️ Run from source
 
 ```powershell
-git clone https://github.com/R0YC0LD/instagram-tools.git
-cd instagram-tools
+git clone https://github.com/R0YC0LD/pacmangram.git
+cd pacmangram
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python src\igdm_launcher.py
@@ -195,7 +195,7 @@ python -m venv .venv
 ### Build the .exe
 
 ```powershell
-.\build.ps1            # runs the tests and produces dist\InstagramTools.exe
+.\build.ps1            # runs the tests and produces dist\Pacmangram.exe
 .\build.ps1 -SkipTests # skips the tests
 ```
 
@@ -229,7 +229,7 @@ tools/               make_icon.py, make_screenshots.py, i18n_keys.py
 
 ## ⚠️ Disclaimer
 
-This project is **unofficial** and has no connection to Instagram / Meta. It talks to Instagram through its unofficial private API. Tools like this may violate Instagram's Terms of Use and can lead to a temporary restriction or the closing of your account. **You use it entirely at your own risk**; the author cannot be held liable for any damage. Use it on **your own account** only. The *Instagram* name and logo are registered trademarks of Meta Platforms, Inc.; the app icon is an original drawing made for this project.
+This project is **unofficial** and has no connection to Instagram / Meta. It talks to Instagram through its unofficial private API. Tools like this may violate Instagram's Terms of Use and can lead to a temporary restriction or the closing of your account. **You use it entirely at your own risk**; the author cannot be held liable for any damage. Use it on **your own account** only. The *Instagram* name and logo are registered trademarks of Meta Platforms, Inc.; PACMANGRAM and its icon are original creations of the author.
 
 Deletions (unsending messages, deleting chats, deleting stories, removing likes/saves, unblocking) **cannot be undone**, which is why the app asks for a typed confirmation.
 
