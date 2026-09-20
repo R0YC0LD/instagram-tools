@@ -81,7 +81,7 @@ def call(): res["v"] = app.guarded(lambda: app.client.private_request("x/y/"))
 state.update(fail=[ConnectionError("Wi-Fi gitti"), TimeoutError("timed out")], calls=0)
 th = threading.Thread(target=call); th.start(); pump(lambda: not th.is_alive()); th.join()
 check("2 dropped connections -> retried and succeeded (3 requests)", res.get("v", {}).get("status") == "ok" and state["calls"] == 3)
-check("the retries were announced in the log", "Bağlantı sorunu" in app.txt_log.get("1.0", "end"))
+check("the retries were announced in the log", pump(lambda: "Bağlantı sorunu" in app.txt_log.get("1.0", "end"), 5))   # log lines travel through the UI queue
 res.clear(); state.update(fail=[ConnectionError("down")] * 10, calls=0)
 def call2():
     try: app.guarded(lambda: app.client.private_request("x/y/"))
