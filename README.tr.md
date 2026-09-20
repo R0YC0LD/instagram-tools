@@ -17,6 +17,11 @@
 
 <img src="docs/intro-tr.gif" width="560" alt="Açılış ekranı: kayan credits ve Pacman">
 
+<p align="center">
+<a href="https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe"><img src="https://img.shields.io/badge/%E2%AC%87%20%C4%B0ND%C4%B0R-InstagramTools.exe-2ea44f?style=for-the-badge" alt="InstagramTools.exe indir"></a>
+<br><sub>Tıkla, indir, dosyaya çift tıkla. Kurulum yok, Python yok. &nbsp;·&nbsp; <a href="docs/USAGE.tr.md"><b>Tam kılavuz: kurulum · kullanım · derleme</b></a></sub>
+</p>
+
 </div>
 
 ---
@@ -92,9 +97,9 @@ Her temizlik aracında aynı akış vardır: **tara → planı gör → onayla �
 
 ## 🚀 Hızlı başlangıç
 
-1. [**Releases**](../../releases/latest) sayfasından `InstagramTools.exe` dosyasını indir (Python gerekmez).
-2. Çift tıkla. Açılış ekranından sonra **Giriş** sayfası gelir.
-3. Giriş yöntemlerinden birini seç:
+1. **İndirmek için tıkla:** [**InstagramTools.exe**](https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe) (yaklaşık 28 MB, Python gerekmez; tüm sürümler [Releases](../../releases) sayfasında).
+2. **Çift tıkla.** Kurulum yok. Windows *"Bilgisayarınızı korudu"* uyarısı verirse **Ek bilgi → Yine de çalıştır**'a tıkla (exe imzasız; kaynağı burada okuyabilir ya da [kendin derleyebilirsin](docs/USAGE.tr.md#6-exeyi-kendin-derle)).
+3. Açılış ekranından sonra **Giriş** sayfası gelir. Giriş yöntemlerinden birini seç:
 
 ### A · Şifreyle giriş
 Kullanıcı adı ve şifreni yaz (şifre **görünür** yazılır, istersen "Gizle"yi işaretle). 2 adımlı doğrulaman varsa program kodu sorar.
@@ -109,6 +114,8 @@ Instagram şifreyle girişte bazen *"Your version of Instagram is out of date"* 
 > ⚠️ `sessionid` bir şifre gibidir. Kimseyle paylaşma. Program onu diske yazmaz (istersen yalnızca şifreli olarak saklar).
 
 Girişten sonra **tüm sayfalar** kullanılabilir.
+
+📖 **Her aracın adım adım kullanımı, dosya konumları, kaldırma, exe derleme ve sorun giderme:** [docs/USAGE.tr.md](docs/USAGE.tr.md)
 
 ## 🌐 Diller
 

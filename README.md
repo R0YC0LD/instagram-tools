@@ -17,6 +17,11 @@
 
 <img src="docs/intro-en.gif" width="560" alt="Intro screen: scrolling credits and Pacman">
 
+<p align="center">
+<a href="https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe"><img src="https://img.shields.io/badge/%E2%AC%87%20DOWNLOAD-InstagramTools.exe-2ea44f?style=for-the-badge" alt="Download InstagramTools.exe"></a>
+<br><sub>Click, then double-click the file. No installation, no Python. &nbsp;·&nbsp; <a href="docs/USAGE.md"><b>Full guide: install · use · build</b></a></sub>
+</p>
+
 </div>
 
 ---
@@ -92,9 +97,9 @@ Every cleanup tool follows the same flow: **scan → review the plan → confirm
 
 ## 🚀 Quick start
 
-1. Download `InstagramTools.exe` from [**Releases**](../../releases/latest) (no Python needed).
-2. Double-click it. After the intro the **Login** page opens.
-3. Pick one of the login methods:
+1. **Click here to download:** [**InstagramTools.exe**](https://github.com/R0YC0LD/instagram-tools/releases/latest/download/InstagramTools.exe) (about 28 MB, no Python needed; all versions are on the [Releases](../../releases) page).
+2. **Double-click it.** No installation. If Windows shows *"Windows protected your PC"*, click **More info → Run anyway** (the exe is unsigned; you can read the source here or [build it yourself](docs/USAGE.md#6-build-the-exe-yourself)).
+3. After the intro the **Login** page opens. Pick one of the login methods:
 
 ### A · Password login
 Type your username and password (the password is **visible** while typing; tick *Hide* if you prefer). If you use two-step verification the app asks for the code.
@@ -109,6 +114,8 @@ Instagram sometimes answers password logins with *"Your version of Instagram is 
 > ⚠️ `sessionid` works like a password. Never share it. The app does not write it to disk (unless you choose to remember the session, encrypted).
 
 After login **every page** is available.
+
+📖 **Step-by-step guide for every tool, file locations, uninstall, building the exe and troubleshooting:** [docs/USAGE.md](docs/USAGE.md)
 
 ## 🌐 Languages
 
