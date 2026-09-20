@@ -223,7 +223,7 @@ tools/               make_icon.py, make_screenshots.py, i18n_keys.py
 
 ## ⚠️ Sorumluluk reddi
 
-Bu proje **resmî değildir**; Instagram / Meta ile hiçbir bağlantısı yoktur. Instagram'ın resmî olmayan (özel) API'sini kullanan [`instagrapi`](https://github.com/subzeroid/instagrapi) kütüphanesine dayanır. Bu tür araçlar Instagram'ın Kullanım Şartları'na aykırı olabilir ve hesabın geçici kısıtlanmasına ya da kapatılmasına yol açabilir. **Kullanım tamamen kendi sorumluluğundadır**; yazar hiçbir zarardan sorumlu tutulamaz. Yalnızca **kendi hesabında** kullan. *Instagram* adı ve logosu Meta Platforms, Inc.'in tescilli markasıdır; uygulama ikonu bu proje için sıfırdan çizilmiş bir çizimdir.
+Bu proje **resmî değildir**; Instagram / Meta ile hiçbir bağlantısı yoktur. Instagram'la, resmî olmayan (özel) API'si üzerinden konuşur. Bu tür araçlar Instagram'ın Kullanım Şartları'na aykırı olabilir ve hesabın geçici kısıtlanmasına ya da kapatılmasına yol açabilir. **Kullanım tamamen kendi sorumluluğundadır**; yazar hiçbir zarardan sorumlu tutulamaz. Yalnızca **kendi hesabında** kullan. *Instagram* adı ve logosu Meta Platforms, Inc.'in tescilli markasıdır; uygulama ikonu bu proje için sıfırdan çizilmiş bir çizimdir.
 
 Silme işlemleri (mesaj geri çekme, sohbet silme, story silme, beğeni/kayıt kaldırma, engel kaldırma) **geri alınamaz**. Program bu yüzden yazılı onay ister.
 
@@ -240,11 +240,6 @@ Instagram: [**@on_r19**](https://instagram.com/on_r19)
 
 </td></tr>
 </table>
-
-## 🙏 Teşekkürler
-
-- [`instagrapi`](https://github.com/subzeroid/instagrapi) (MIT) · [`curl_cffi`](https://github.com/lexiforest/curl_cffi) (MIT) · [`pydantic`](https://github.com/pydantic/pydantic) (MIT)
-- Derleme: [PyInstaller](https://pyinstaller.org) · İkon çizimi: [Pillow](https://python-pillow.org)
 
 ## 📄 Lisans
 

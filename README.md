@@ -222,7 +222,7 @@ tools/               make_icon.py, make_screenshots.py, i18n_keys.py
 
 ## ⚠️ Disclaimer
 
-This project is **unofficial** and has no connection to Instagram / Meta. It relies on the [`instagrapi`](https://github.com/subzeroid/instagrapi) library, which uses Instagram's unofficial private API. Tools like this may violate Instagram's Terms of Use and can lead to a temporary restriction or the closing of your account. **You use it entirely at your own risk**; the author cannot be held liable for any damage. Use it on **your own account** only. The *Instagram* name and logo are registered trademarks of Meta Platforms, Inc.; the app icon is an original drawing made for this project.
+This project is **unofficial** and has no connection to Instagram / Meta. It talks to Instagram through its unofficial private API. Tools like this may violate Instagram's Terms of Use and can lead to a temporary restriction or the closing of your account. **You use it entirely at your own risk**; the author cannot be held liable for any damage. Use it on **your own account** only. The *Instagram* name and logo are registered trademarks of Meta Platforms, Inc.; the app icon is an original drawing made for this project.
 
 Deletions (unsending messages, deleting chats, deleting stories, removing likes/saves, unblocking) **cannot be undone**, which is why the app asks for a typed confirmation.
 
@@ -239,11 +239,6 @@ Instagram: [**@on_r19**](https://instagram.com/on_r19)
 
 </td></tr>
 </table>
-
-## 🙏 Thanks
-
-- [`instagrapi`](https://github.com/subzeroid/instagrapi) (MIT) · [`curl_cffi`](https://github.com/lexiforest/curl_cffi) (MIT) · [`pydantic`](https://github.com/pydantic/pydantic) (MIT)
-- Build: [PyInstaller](https://pyinstaller.org) · Icon drawing: [Pillow](https://python-pillow.org)
 
 ## 📄 License
 
