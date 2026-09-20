@@ -1,0 +1,17 @@
+# build output
+build/
+dist/
+*.spec
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+# local state - never commit sessions, logs or settings
+session*.json
+session*.bin
+*.log
+settings.json
+protected.json
+keep.json
+.claude/
