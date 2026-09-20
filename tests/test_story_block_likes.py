@@ -91,7 +91,7 @@ def run(tab, word=None):
     tab.start(); tab.app.pump(lambda: not tab.app.busy and infos)
 
 root, app = mk()
-story, blocked, likes = app.bulk_tabs
+story, blocked, likes = app.bulk_tabs[:3]
 assert str(app.nb.tab(4, "state")) == "normal" and str(app.nb.tab(6, "state")) == "normal"
 print("PASS after login all 3 new tabs are enabled")
 

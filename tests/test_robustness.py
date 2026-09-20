@@ -58,7 +58,7 @@ def pump(cond=lambda: False, t=15):
     return cond()
 app.var_sid.set("1234567890:" + "A" * 40); app.do_login_session(); pump(lambda: app.client is not None); pump(lambda: not app.busy)
 
-check("after login every page is enabled (incl. Mesajlar)", all(str(app.nb.tab(i, "state")) == "normal" for i in range(7)))
+check("after login every page is enabled (incl. Mesajlar)", all(str(app.nb.tab(i, "state")) == "normal" for i in range(10)))
 app.nb.select(2); pump(t=0.05)
 check("Mesajlar page opens with no chat selected and explains what to do", app.lbl_thread.cget("text") == "Sohbet: seçilmedi" and "sohbet seçilmedi" in app.hint_msgs.cget("text").lower())
 app.find_messages(); check("'Yükle / Ara' with no chat gives a hint instead of failing", "sohbet seç" in app.lbl_prog.cget("text").lower() and not app.busy)
@@ -71,8 +71,8 @@ def boom(): raise RuntimeError("kasıtlı test hatası")
 app.run_bg(boom); pump(lambda: not app.busy)
 check("worker crash: UI unlocked (not stuck 'busy')", not app.busy and str(app.pb.cget("mode")) == "determinate")
 log = app.txt_log.get("1.0", "end"); check("worker crash: message shown in the log", "Beklenmeyen hata" in log and "kasıtlı test hatası" in log)
-check("worker crash: traceback written to the log file", "TRACEBACK" in open(g.LOG_FILE, encoding="utf-8").read() and "boom" in open(g.LOG_FILE, encoding="utf-8").read())
-root.after(0, lambda: 1 / 0); pump(t=0.3)
+app.flush_log(); check("worker crash: traceback written to the log file", "TRACEBACK" in open(g.LOG_FILE, encoding="utf-8").read() and "boom" in open(g.LOG_FILE, encoding="utf-8").read())
+root.after(0, lambda: 1 / 0); pump(t=0.3); app.flush_log()
 check("error inside a Tk callback is logged, app keeps running", "division by zero" in app.txt_log.get("1.0", "end") or "ZeroDivisionError" in open(g.LOG_FILE, encoding="utf-8").read())
 
 # connectivity drops: retried transparently

@@ -28,43 +28,18 @@ from instagrapi.exceptions import (TwoFactorRequired, BadPassword, ChallengeRequ
                                    RateLimitError, FeedbackRequired, ClientThrottledError, LoginRequired)
 
 import igdm_ui as ui
+import igdm_perf as perf
 from igdm_common import (APP_TITLE, VERSION, ACCENT, ACCENT_DARK, DANGER, BG, CARD, TEXT, MUTED, PAC, SIDEBAR,
                          SIDEBAR_HOVER, FONT, FONT_BOLD, SETTINGS_FILE, PROTECTED_FILE, KEEP_FILE,
                          LOG_FILE, PROFILES, DEFAULT_PROFILE, SOFT_PAUSE, MAX_SOFT_HITS, LONG_REST, MAX_LONG_RESTS,
                          StopRequested, Pacer, fmt_duration, load_json, save_json, limit_kind, is_limit_error,
                          is_network_error, NET_BACKOFF, friendly, norm_word)
-from igdm_bulk import StoryTab, BlockedTab, LikesTab
+from igdm_bulk import StoryTab, BlockedTab, LikesTab, SavedTab
+from igdm_extra import BackupTab, AccountTab
 
 
-ITEM_LABELS = {
-    "media": "[Fotoğraf/Video]", "raven_media": "[Geçici medya]", "voice_media": "[Sesli mesaj]",
-    "like": "[Beğeni]", "link": "[Bağlantı]", "reel_share": "[Reel paylaşımı]",
-    "media_share": "[Gönderi paylaşımı]", "clip": "[Klip]", "animated_media": "[GIF]",
-    "story_share": "[Hikaye paylaşımı]", "felix_share": "[Video paylaşımı]",
-    "action_log": "[Sistem mesajı]", "xma_link": "[Bağlantı]", "generic_xma": "[Paylaşım]",
-}
+from igdm_items import ITEM_LABELS, item_id, item_text, item_label, item_time  # noqa: F401
 
-
-def item_id(it):
-    return it.get("item_id") or it.get("id") or it.get("client_context")
-
-
-def item_text(it):
-    text = it.get("text")
-    if not text and it.get("item_type") == "link":
-        text = (it.get("link") or {}).get("text")
-    return text or ""
-
-
-def item_label(it):
-    return item_text(it) or ITEM_LABELS.get(it.get("item_type"), f"[{it.get('item_type', 'diğer')}]")
-
-
-def item_time(it):
-    try:
-        return datetime.fromtimestamp(int(it["timestamp"]) / 1_000_000).strftime("%d.%m.%Y %H:%M")
-    except Exception:
-        return ""
 
 
 
@@ -95,11 +70,16 @@ class App:
         self.busy = False
         self.stop_event = threading.Event()
         self.q = queue.Queue()
+        self.frame_ms = perf.frame_ms()                  # one display frame: 16 ms @60 Hz, 6 ms @144 Hz
+        self.poll_ms = max(4, self.frame_ms)             # UI-queue polling follows the display
+        self._log_q = queue.Queue()                      # log lines -> file, written off the UI thread
+        self._log_thread = None
 
         root.title(f"{APP_TITLE} v{VERSION}")
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         w, h = min(1340, sw - 40), min(860, sh - 90)
-        root.geometry(f"{w}x{h}+{max((sw - w) // 2, 0)}+{max((sh - h) // 3, 0)}")
+        if not getattr(root, "_igdm_sized", False):      # the launcher may already have sized the window
+            root.geometry(f"{w}x{h}+{max((sw - w) // 2, 0)}+{max((sh - h) // 3, 0)}")
         root.minsize(min(1180, w), min(700, h))
         root.configure(bg=BG)
         root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -116,7 +96,7 @@ class App:
 
         self._style()
         self._build()
-        self.root.after(100, self._poll)
+        self.root.after(self.poll_ms, self._poll)
         self.log("Program açıldı. Ağ kilidi aktif: yalnızca Instagram/Facebook sunucularına bağlanılır.")
         self.try_saved_session()
 
@@ -129,9 +109,11 @@ class App:
         kind = kind or ("danger" if danger else ("primary" if primary else "secondary"))
         return ui.FlatButton(parent, text, command, kind=kind)
 
-    NAV = [("HESAP", [(0, "Giriş", "●")]),
-           ("DM ARAÇLARI", [(1, "Sohbet seç", "✉"), (2, "Mesajlar", "☰"), (3, "DM temizlik", "⌫")]),
-           ("TEMİZLİK ARAÇLARI", [(4, "Story arşivi", "▣"), (5, "Engeller", "⊘"), (6, "Beğeniler", "♥")])]
+    NAV = [("HESAP", [(0, "Giriş", "●"), (9, "Hesap bilgisi", "☺")]),
+           ("DM ARAÇLARI", [(1, "Sohbet seç", "✉"), (2, "Mesajlar", "☰"), (3, "DM temizlik", "⌫"),
+                            (8, "Sohbet yedekle", "⇩")]),
+           ("TEMİZLİK ARAÇLARI", [(4, "Story arşivi", "▣"), (5, "Engeller", "⊘"), (6, "Beğeniler", "♥"),
+                                  (7, "Kaydedilenler", "⚑")])]
 
     def _build(self):
         ui.set_window_icon(self.root)
@@ -162,7 +144,9 @@ class App:
         self._build_threads()
         self._build_msgs()
         self._build_auto()
-        self.bulk_tabs = [StoryTab(self), BlockedTab(self), LikesTab(self)]   # nav pages 4, 5, 6
+        # notebook pages 4..9: Story, Blocked, Likes, Saved, Backup, Account
+        self.bulk_tabs = [StoryTab(self), BlockedTab(self), LikesTab(self), SavedTab(self), BackupTab(self),
+                          AccountTab(self)]
         self.sidebar.refresh()
 
     def _build_sidebar_footer(self, f):
@@ -307,7 +291,13 @@ class App:
         self.lbl_login.grid(row=2, column=0, columnspan=3, sticky="w")
         note = tk.Frame(f, bg="#eef2ff")
         note.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(8, 0))
-        tk.Label(note, text="🔒", bg="#eef2ff", font=("Segoe UI Symbol", 13)).pack(side="left", padx=(14, 8), pady=6)
+        lock = tk.Canvas(note, width=22, height=26, bg="#eef2ff", highlightthickness=0)   # drawn: an emoji font costs ~150 ms
+        lock.create_arc(5, 1, 17, 15, start=0, extent=180, style="arc", outline="#3730a3", width=2)
+        lock.create_line(5, 8, 5, 12, fill="#3730a3", width=2)
+        lock.create_line(17, 8, 17, 12, fill="#3730a3", width=2)
+        lock.create_rectangle(3, 12, 19, 24, fill="#3730a3", outline="#3730a3")
+        lock.create_oval(9, 15, 13, 19, fill="#eef2ff", outline="")
+        lock.pack(side="left", padx=(14, 8), pady=6)
         tk.Label(note, bg="#eef2ff", fg="#3730a3", justify="left", wraplength=780, anchor="w", font=(FONT, 9),
                  text="Gizlilik: şifren diske yazılmaz. Program yalnızca Instagram sunucularına bağlanır (başka "
                       "adresler engellenir). Oturumu hatırlarsan yalnızca bu Windows hesabının açabileceği şekilde "
@@ -431,19 +421,44 @@ class App:
         self.txt_log.configure(state="normal")
         self.txt_log.insert("end", f"{stamp}  ", "time")
         self.txt_log.insert("end", f"{msg}\n", level or ())
+        if int(self.txt_log.index("end-1c").split(".")[0]) > 1500:      # keep the widget light over long runs
+            self.txt_log.delete("1.0", "301.0")
         self.txt_log.see("end")
         self.txt_log.configure(state="disabled")
         self._write_log_file(f"{datetime.now():%Y-%m-%d} [{stamp}] {msg}")
 
     def _write_log_file(self, line):
-        try:  # persistent log file (rotated at 1 MB)
-            os.makedirs(APP_DIR, exist_ok=True)
-            if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 1_000_000:
-                os.replace(LOG_FILE, LOG_FILE + ".1")
-            with open(LOG_FILE, "a", encoding="utf-8") as fp:
-                fp.write(line.rstrip("\n") + "\n")
-        except OSError:
-            pass
+        """Queue a line for the log file; a background thread does the (slow) disk I/O, never the UI thread."""
+        self._log_q.put(line)
+        if self._log_thread is None or not self._log_thread.is_alive():
+            self._log_thread = threading.Thread(target=self._log_writer, daemon=True)
+            self._log_thread.start()
+
+    def _log_writer(self):
+        while True:
+            batch = [self._log_q.get()]
+            try:
+                while len(batch) < 200:
+                    batch.append(self._log_q.get_nowait())
+            except queue.Empty:
+                pass
+            try:  # persistent log file (rotated at 1 MB)
+                os.makedirs(APP_DIR, exist_ok=True)
+                if os.path.exists(LOG_FILE) and os.path.getsize(LOG_FILE) > 1_000_000:
+                    os.replace(LOG_FILE, LOG_FILE + ".1")
+                with open(LOG_FILE, "a", encoding="utf-8") as fp:
+                    fp.write("".join(l.rstrip("\n") + "\n" for l in batch))
+            except OSError:
+                pass
+            finally:
+                for _ in batch:
+                    self._log_q.task_done()
+
+    def flush_log(self, timeout=5.0):
+        """Wait until every queued line is on disk (used on exit and by tests)."""
+        end = time.time() + timeout
+        while self._log_q.unfinished_tasks and time.time() < end:
+            time.sleep(0.005)
 
     def open_log_file(self):
         try:
@@ -459,10 +474,17 @@ class App:
             keep = max(0, int(self.var_keep.get()))
         except (tk.TclError, ValueError):
             keep = 20
-        save_json(SETTINGS_FILE, {"profile": self.var_profile.get(), "keep": keep,
-                                  "keep_pins": self.var_keep_pins.get(),
-                                  "unsend_first": self.var_unsend_first.get(),
-                                  "auto_resume": self.var_autoresume.get()})
+        data = load_json(SETTINGS_FILE, {})            # keep keys other tabs / versions wrote
+        data.update({"profile": self.var_profile.get(), "keep": keep, "keep_pins": self.var_keep_pins.get(),
+                     "unsend_first": self.var_unsend_first.get(), "auto_resume": self.var_autoresume.get()})
+        for tab in self.bulk_tabs:
+            if hasattr(tab, "settings"):
+                data.update(tab.settings())
+        save_json(SETTINGS_FILE, data)
+
+    def saved_settings(self):
+        """The persisted settings dict ({} when there is none yet)."""
+        return load_json(SETTINGS_FILE, {})
 
     # ---- per-account "keep" lists (e.g. people who must stay blocked)
     def load_keep(self, name):
@@ -476,7 +498,8 @@ class App:
         save_json(KEEP_FILE, data)
 
     # ---- speed profile helpers
-    NOUNS = {"unsend": "mesaj", "hide": "sohbet", "story": "story", "unblock": "kişi", "unlike": "beğeni"}
+    NOUNS = {"unsend": "mesaj", "hide": "sohbet", "story": "story", "unblock": "kişi", "unlike": "beğeni",
+             "unsave": "kayıt", "download": "dosya"}
 
     def speed_text(self, kind):
         lo, hi = PROFILES[self.var_profile.get()][kind]
@@ -513,12 +536,22 @@ class App:
         return res.get()
 
     def _poll(self):
+        """Run queued UI callbacks for at most ~6 ms per tick, so a burst of updates from a worker can never
+        freeze the window; when work is left over, come straight back on the next tick."""
+        t0 = time.perf_counter()
+        more = False
         try:
             while True:
                 self.q.get_nowait()()
+                if time.perf_counter() - t0 > 0.006:
+                    more = True
+                    break
         except queue.Empty:
             pass
-        self.root.after(100, self._poll)
+        try:
+            self.root.after(1 if more else self.poll_ms, self._poll)
+        except tk.TclError:
+            pass                                   # window already destroyed
 
     def set_busy(self, busy):
         self.busy = busy
@@ -566,6 +599,7 @@ class App:
         if self.busy and not ui.askyesno(APP_TITLE, "Bir işlem sürüyor. Yine de kapatılsın mı?"):
             return
         self.save_settings()
+        self.flush_log(1.0)
         self.root.destroy()
 
     def stop(self):

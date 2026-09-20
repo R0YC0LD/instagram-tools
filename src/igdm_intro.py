@@ -12,6 +12,7 @@ import time
 import tkinter as tk
 
 from igdm_icon import logo_image
+from igdm_perf import frame_ms
 from igdm_meta import APP_TITLE, VERSION, AUTHOR, INSTAGRAM_HANDLE, REPO_URL
 
 TOP, BOTTOM = (5, 8, 20), (24, 30, 72)
@@ -81,7 +82,9 @@ class Intro:
         self._stars = []
         self._dots = {}
         self._pac = None
-        self._after = root.after(16, self._tick)
+        self._frames = 0
+        self.frame_ms = frame_ms()                    # 16 ms on a 60 Hz screen, 6 ms on 144 Hz, ...
+        self._after = root.after(self.frame_ms, self._tick)
 
     # ---- layout ------------------------------------------------------------------------------
     def _on_configure(self, event):
@@ -145,21 +148,24 @@ class Intro:
         if self.done:
             return
         now = time.perf_counter()
-        dt = min(now - self._last, 0.05)
+        dt = min(now - self._last, 0.05)              # movement is time-based: same speed at any frame rate
         self._last = now
+        self._frames += 1
         try:
             self.cv.move("credits", 0, -self.speed * dt)
             self._animate_pacman(now, dt)
-            if self._stars and random.random() < 0.35:
-                s = random.choice(self._stars)
-                self.cv.itemconfigure(s, fill=random.choice(("#475569", "#94a3b8", "#e2e8f0", "#64748b")))
-            box = self.cv.bbox("credits")
-            if self._built and box and box[3] < -10:
-                self.finish()
-                return
+            if self._frames % 8 == 0:                 # cheap housekeeping only every few frames
+                if self._stars and random.random() < 0.6:
+                    s = random.choice(self._stars)
+                    self.cv.itemconfigure(s, fill=random.choice(("#475569", "#94a3b8", "#e2e8f0", "#64748b")))
+                box = self.cv.bbox("credits")
+                if self._built and box and box[3] < -10:
+                    self.finish()
+                    return
         except tk.TclError:
             return
-        self._after = self.root.after(16, self._tick)
+        spent = int((time.perf_counter() - now) * 1000)
+        self._after = self.root.after(max(1, self.frame_ms - spent), self._tick)   # aim at the display's frame time
 
     def _animate_pacman(self, now, dt):
         if self._pac is None:

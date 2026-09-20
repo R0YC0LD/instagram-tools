@@ -41,8 +41,8 @@ check("modern checkbox indicator element exists", "modern.indicator" in ttk.Styl
 
 # ---- sidebar navigation mirrors tab state
 sb = app.sidebar
-check("sidebar has 7 entries", sorted(sb.rows) == list(range(7)))
-check("before login only 'Giriş' is enabled", sb._state(0) == "normal" and all(sb._state(i) == "disabled" for i in range(1, 7)))
+check("sidebar has 10 entries", sorted(sb.rows) == list(range(10)))
+check("before login only 'Giriş' is enabled", sb._state(0) == "normal" and all(sb._state(i) == "disabled" for i in range(1, 10)))
 sb.go(3); pump(0.05); check("clicking a disabled entry does nothing", app.nb.index(app.nb.select()) == 0)
 check("active entry is highlighted with the Pacman-yellow stripe", str(sb.rows[0]["stripe"].cget("bg")) == C.PAC)
 check("disabled entries are dimmed", str(sb.rows[3]["text"].cget("fg")) == "#475569")
@@ -50,7 +50,7 @@ app.var_sid.set("1234567890:" + "A" * 40); app.do_login_session()
 end = time.time() + 15
 while time.time() < end and app.client is None: root.update(); real_sleep(0.01)
 pump(0.5)
-check("after login EVERY page is usable", all(sb._state(i) == "normal" for i in range(7)))
+check("after login EVERY page is usable", all(sb._state(i) == "normal" for i in range(10)))
 sb.go(5); pump(0.05); check("clicking an enabled entry switches page", app.nb.index(app.nb.select()) == 5)
 check("highlight follows the page", str(sb.rows[5]["stripe"].cget("bg")) == C.PAC and str(sb.rows[0]["stripe"].cget("bg")) == C.SIDEBAR)
 check("account chip shows the user", app.lbl_account.cget("text") == "@pac.man" and "Bağlı" in app.lbl_account_sub.cget("text"))

@@ -147,6 +147,6 @@ root, app = mk(); app.var_profile.set("Hızlı"); app.var_keep.set(35); app.var_
 s = json.load(open(g.SETTINGS_FILE)); assert s["profile"] == "Hızlı" and s["keep"] == 35 and s["keep_pins"] is False, s
 root = tk.Tk(); a2 = g.App(root)
 assert a2.var_profile.get() == "Hızlı" and a2.var_keep.get() == 35 and a2.var_keep_pins.get() is False
-assert os.path.getsize(g.LOG_FILE) > 0
+a2.flush_log(); assert os.path.getsize(g.LOG_FILE) > 0
 print("PASS settings (speed, keep count, pins) restored on next start; log file written")
 root.destroy(); print("ALL OK")

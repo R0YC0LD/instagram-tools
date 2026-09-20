@@ -250,8 +250,12 @@ class Sidebar(tk.Frame):
         self.rows = {}
         self.logo = logo
 
+        # The footer is packed FIRST so that, in a short window, it is the nav list that gets clipped, never the footer.
+        self.footer = tk.Frame(self, bg=SIDEBAR)
+        self.footer.pack(side="bottom", fill="x", padx=16, pady=14)
+
         brand = tk.Frame(self, bg=SIDEBAR)
-        brand.pack(fill="x", padx=16, pady=(22, 10))
+        brand.pack(fill="x", padx=16, pady=(18, 4))
         tk.Label(brand, image=logo, bg=SIDEBAR).pack(side="left")
         col = tk.Frame(brand, bg=SIDEBAR)
         col.pack(side="left", fill="x", expand=True, padx=(10, 0))
@@ -260,18 +264,15 @@ class Sidebar(tk.Frame):
 
         for section, items in sections:
             tk.Label(self, text=section, fg="#64748b", bg=SIDEBAR, font=(FONT, 8, "bold"), anchor="w").pack(
-                fill="x", padx=22, pady=(18, 6))
+                fill="x", padx=22, pady=(12, 3))
             for idx, text, glyph in items:
                 self._add_item(idx, text, glyph)
-
-        self.footer = tk.Frame(self, bg=SIDEBAR)
-        self.footer.pack(side="bottom", fill="x", padx=16, pady=16)
 
         nb.nav = self
         nb.bind("<<NotebookTabChanged>>", lambda e: self.refresh(), add="+")
 
     def _add_item(self, idx, text, glyph):
-        row = tk.Frame(self, bg=SIDEBAR, height=40, cursor="hand2")
+        row = tk.Frame(self, bg=SIDEBAR, height=35, cursor="hand2")
         row.pack(fill="x", padx=(0, 0), pady=1)
         row.pack_propagate(False)
         stripe = tk.Frame(row, bg=SIDEBAR, width=4)
@@ -305,25 +306,33 @@ class Sidebar(tk.Frame):
 
     def _hover(self, idx, on):
         self.rows[idx]["hover"] = on
-        self.refresh()
+        self._paint(idx, self._current())            # only the row under the mouse: cheap, no flicker
 
     def refresh(self):
         cur = self._current()
-        for idx, r in self.rows.items():
-            state = self._state(idx)
-            active = idx == cur
-            if state != "normal":
-                bg, fg, stripe = SIDEBAR, "#475569", SIDEBAR
-            elif active:
-                bg, fg, stripe = SIDEBAR_HOVER, "white", PAC
-            elif r["hover"]:
-                bg, fg, stripe = SIDEBAR_HOVER, "white", SIDEBAR_HOVER
-            else:
-                bg, fg, stripe = SIDEBAR, SIDEBAR_TEXT, SIDEBAR
-            r["row"].configure(bg=bg, cursor="hand2" if state == "normal" else "arrow")
-            r["stripe"].configure(bg=stripe)
-            r["glyph"].configure(bg=bg, fg=PAC if (active and state == "normal") else fg)
-            r["text"].configure(bg=bg, fg=fg, font=(FONT, 10, "bold" if active else "normal"))
+        for idx in self.rows:
+            self._paint(idx, cur)
+
+    def _paint(self, idx, cur):
+        r = self.rows[idx]
+        state = self._state(idx)
+        active = idx == cur
+        if state != "normal":
+            bg, fg, stripe = SIDEBAR, "#475569", SIDEBAR
+        elif active:
+            bg, fg, stripe = SIDEBAR_HOVER, "white", PAC
+        elif r["hover"]:
+            bg, fg, stripe = SIDEBAR_HOVER, "white", SIDEBAR_HOVER
+        else:
+            bg, fg, stripe = SIDEBAR, SIDEBAR_TEXT, SIDEBAR
+        sig = (bg, fg, stripe, state == "normal", active)
+        if r.get("sig") == sig:                      # nothing changed -> no Tk calls at all
+            return
+        r["sig"] = sig
+        r["row"].configure(bg=bg, cursor="hand2" if state == "normal" else "arrow")
+        r["stripe"].configure(bg=stripe)
+        r["glyph"].configure(bg=bg, fg=PAC if (active and state == "normal") else fg)
+        r["text"].configure(bg=bg, fg=fg, font=(FONT, 10, "bold" if active else "normal"))
 
 
 # --------------------------------------------------------------------------------- empty states

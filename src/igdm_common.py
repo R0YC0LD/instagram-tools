@@ -43,13 +43,14 @@ LOG_FILE = os.path.join(APP_DIR, "igdmtool.log")
 # takes a longer rest, like a person would. "unsend" = one message, "hide" = one whole conversation.
 # Other kinds: "story" = delete one archived story, "unblock" = unblock one person (friendship actions are
 # rate-limited harder by Instagram, so they are the slowest), "unlike" = remove one like.
+# "unsave" = remove one saved post/reel from "Saved"; "download" = fetch one chat file (photo) from the CDN.
 PROFILES = {
     "Güvenli": {"unsend": (60, 120), "hide": (30, 60), "story": (20, 40), "unblock": (45, 90), "unlike": (20, 40),
-                "batch": 10, "rest": (120, 240)},
+                "unsave": (20, 40), "download": (1.0, 3.0), "batch": 10, "rest": (120, 240)},
     "Dengeli": {"unsend": (30, 60), "hide": (15, 30), "story": (10, 20), "unblock": (25, 50), "unlike": (10, 20),
-                "batch": 15, "rest": (120, 300)},
+                "unsave": (10, 20), "download": (0.5, 1.5), "batch": 15, "rest": (120, 300)},
     "Hızlı":   {"unsend": (15, 30), "hide": (8, 15), "story": (5, 10), "unblock": (12, 25), "unlike": (5, 10),
-                "batch": 20, "rest": (180, 360)},
+                "unsave": (5, 10), "download": (0.2, 0.6), "batch": 20, "rest": (180, 360)},
 }
 DEFAULT_PROFILE = "Dengeli"
 SOFT_PAUSE = (300, 480)   # rest (s) after Instagram says "please wait"

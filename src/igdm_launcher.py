@@ -16,6 +16,7 @@ import tkinter as tk
 from igdm_meta import APP_TITLE, VERSION
 from igdm_icon import set_window_icon
 from igdm_intro import Intro
+from igdm_perf import responsive_ui
 
 APP_ID = "IGDMTool.PacmanCleaner.3"
 
@@ -77,7 +78,8 @@ def main():
 
     def load_heavy():
         try:
-            import igdm_app                # noqa: WPS433 - the heavy import, off the UI thread
+            with responsive_ui():              # faster GIL hand-over: the intro keeps animating during the import
+                import igdm_app                # noqa: WPS433 - the heavy import, off the UI thread
             box["gui"] = igdm_app
         except BaseException as e:             # noqa: BLE001
             box["error"] = (e, traceback.format_exc())

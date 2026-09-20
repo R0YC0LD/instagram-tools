@@ -5,6 +5,7 @@ Autonomous "scan -> plan -> confirm -> run until done" tools, one notebook tab e
   * StoryTab   - delete archived stories older than a chosen date
   * BlockedTab - unblock every blocked account, one by one
   * LikesTab   - remove every like
+  * SavedTab   - remove every saved post/reel from 'Saved'
 
 All of them share BulkTab: paced (human-like) requests, automatic rest + slow-down when Instagram says
 "please wait", hard stop on serious warnings, double-click to protect an entry, Stop button.
@@ -576,28 +577,16 @@ class BlockedTab(BulkTab):
         return bool(self.app.client.user_unblock(item["id"]))
 
 
-# ========================================================================================== likes
+# ========================================================================================== likes / saved
 _MEDIA_TYPES = {1: "Fotoğraf", 2: "Video", 8: "Albüm"}
 
 
-class LikesTab(BulkTab):
-    key = "likes"
-    nb_title = "Beğeniler"
-    heading = "Tüm beğenileri otomatik kaldır"
-    blurb = ("Beğendiğin tüm gönderi ve reelleri listeler, beğenilerini tek tek, yavaşça kaldırır. Beğenisi KALSIN "
-             "istediğin bir gönderiye ÇİFT TIKLA (yeşil 'Korumalı' olur). Not: yorum beğenileri bu listede yer almaz.")
-    kind = "unlike"
+class MediaListTab(BulkTab):
+    """Posts/reels listed by a paged feed endpoint; the action removes the like / the save."""
+    endpoint = "feed/liked/"
     columns = (("owner", "Hesap", 150), ("type", "Tür", 100), ("date", "Gönderi tarihi", 150),
                ("text", "Açıklama", 300))
-    act_label = "Beğeni kalkacak"
-    keep_label = "Beğeni kalacak"
-    done_label = "Beğeni kalktı"
-    confirm_word = "KALDIR"
-    scan_text = "Beğenileri tara ve planla"
-    start_text = "Beğenileri kaldır"
-
-    def confirm_text(self, n_act, n_keep):
-        return f"{n_act} gönderinin beğenisi kaldırılacak, {n_keep} beğeni kalacak."
+    scanned_label = "Taranan kayıt"
 
     def scan_items(self):
         client, app = self.app.client, self.app
@@ -606,7 +595,7 @@ class LikesTab(BulkTab):
             params = {"include_igtv_preview": "false"}
             if cursor:
                 params["max_id"] = cursor
-            res = app.guarded(lambda p=params: client.private_request("feed/liked/", params=p))
+            res = app.guarded(lambda p=params: client.private_request(self.endpoint, params=p))
             page = res.get("items") or []
             pages += 1
             for entry in page:
@@ -623,7 +612,7 @@ class LikesTab(BulkTab):
                     date = ""
                 text = ((m.get("caption") or {}).get("text") or "").replace("\n", " ")[:120]
                 found.append({"id": mid, "cols": (owner, kind, date, text), "search": f"{owner} {text}"})
-            self.status(f"Taranan beğeni: {len(found)}")
+            self.status(f"{self.scanned_label}: {len(found)}")
             nxt = res.get("next_max_id") or res.get("max_id") or ""
             if not page or not nxt or nxt == cursor:
                 break
@@ -635,5 +624,50 @@ class LikesTab(BulkTab):
         owner, kind = item["cols"][0], item["cols"][1]
         return f"@{owner} ({kind})" if owner else str(item["id"])
 
+
+class LikesTab(MediaListTab):
+    key = "likes"
+    nb_title = "Beğeniler"
+    heading = "Tüm beğenileri otomatik kaldır"
+    blurb = ("Beğendiğin tüm gönderi ve reelleri listeler, beğenilerini tek tek, yavaşça kaldırır. Beğenisi KALSIN "
+             "istediğin bir gönderiye ÇİFT TIKLA (yeşil 'Korumalı' olur). Not: yorum beğenileri bu listede yer almaz.")
+    kind = "unlike"
+    endpoint = "feed/liked/"
+    scanned_label = "Taranan beğeni"
+    act_label = "Beğeni kalkacak"
+    keep_label = "Beğeni kalacak"
+    done_label = "Beğeni kalktı"
+    confirm_word = "KALDIR"
+    scan_text = "Beğenileri tara ve planla"
+    start_text = "Beğenileri kaldır"
+
+    def confirm_text(self, n_act, n_keep):
+        return f"{n_act} gönderinin beğenisi kaldırılacak, {n_keep} beğeni kalacak."
+
     def perform(self, item):
         return bool(self.app.client.media_unlike(item["id"]))
+
+
+class SavedTab(MediaListTab):
+    key = "saved"
+    nb_title = "Kaydedilenler"
+    heading = "Kaydedilen gönderi ve reelleri temizle"
+    blurb = ("Hesabında kaydettiğin (yer imi) tüm gönderi ve reelleri listeler ve kayıtlarını tek tek, yavaşça kaldırır. "
+             "Kaydı KALSIN istediğin bir gönderiye ÇİFT TIKLA (yeşil 'Korumalı' olur). Gönderinin kendisi silinmez; "
+             "yalnızca senin 'Kaydedilenler' listenden çıkar.")
+    kind = "unsave"
+    endpoint = "feed/saved/posts/"
+    scanned_label = "Taranan kayıt"
+    act_label = "Kayıt kalkacak"
+    keep_label = "Kayıt kalacak"
+    done_label = "Kayıt kalktı"
+    confirm_word = "KALDIR"
+    scan_text = "Kaydedilenleri tara ve planla"
+    start_text = "Kayıtları kaldır"
+
+    def confirm_text(self, n_act, n_keep):
+        return (f"{n_act} gönderi/reel 'Kaydedilenler' listenden çıkarılacak, {n_keep} kayıt kalacak. "
+                "Gönderilerin kendisi silinmez.")
+
+    def perform(self, item):
+        return bool(self.app.client.media_unsave(item["id"]))
