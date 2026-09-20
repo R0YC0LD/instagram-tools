@@ -19,8 +19,9 @@ import tkinter as tk
 from tkinter import ttk, filedialog
 
 import igdm_ui as ui
-from igdm_common import (APP_TITLE, DANGER, SUCCESS, PROFILES, StopRequested, friendly, is_limit_error, limit_kind)
+from igdm_common import (DANGER, SUCCESS, PROFILES, StopRequested, friendly, is_limit_error, limit_kind)
 from igdm_items import item_id, item_label, item_text
+from igdm_i18n import tr, T, app_title, get_language
 
 # =============================================================================================== helpers
 _BAD_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -39,7 +40,7 @@ def safe_name(name, fallback="sohbet", maxlen=80):
 
 def default_backup_dir():
     docs = os.path.join(os.path.expanduser("~"), "Documents")
-    return os.path.join(docs if os.path.isdir(docs) else os.path.expanduser("~"), "Instagram Araçları", "Yedekler")
+    return os.path.join(docs if os.path.isdir(docs) else os.path.expanduser("~"), tr("Instagram Araçları"), tr("Yedekler"))
 
 
 _EXT_OK = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".m4a", ".mp3", ".aac", ".mov", ".heic"}
@@ -95,7 +96,7 @@ def format_message(it, sender, files):
     stamp = ts.strftime("%Y-%m-%d %H:%M:%S") if ts else "????-??-?? ??:??:??"
     t = it.get("item_type")
     body = item_text(it)
-    kind_names = {"image": "Fotoğraf", "video": "Video", "voice": "Sesli mesaj"}
+    kind_names = {"image": tr("Fotoğraf"), "video": tr("Video"), "voice": tr("Sesli mesaj")}
     refs = media_refs(it)
     if refs:
         parts = []
@@ -106,10 +107,10 @@ def format_message(it, sender, files):
     elif not body:
         body = item_label(it)
         if t == "action_log":
-            body = f"[Sistem] {(it.get('action_log') or {}).get('description', '')}".rstrip()
+            body = tr("[Sistem] {0}", (it.get("action_log") or {}).get("description", "")).rstrip()
     rx = ((it.get("reactions") or {}).get("emojis")) or []
     if rx:
-        body += "   (tepkiler: " + " ".join(str(e.get("emoji", "")) for e in rx if isinstance(e, dict)) + ")"
+        body += tr("   (tepkiler: {0})", " ".join(str(e.get("emoji", "")) for e in rx if isinstance(e, dict)))
     lines = body.replace("\r", "").split("\n")
     out = [f"[{stamp}] {sender}: {lines[0]}"]
     out += [f"{' ' * (len(stamp) + 3)}{ln}" for ln in lines[1:]]
@@ -118,7 +119,7 @@ def format_message(it, sender, files):
 
 # ============================================================================================ chat backup
 class BackupTab:
-    nb_title = "Sohbet yedekle"
+    nb_title = T("Sohbet yedekle")
 
     def __init__(self, app):
         self.app = app
@@ -132,45 +133,46 @@ class BackupTab:
         self.var_filter = tk.StringVar()
         self.last_result = None
         self._build()
-        app.nb.add(self.frame, text=self.nb_title)
+        app.nb.add(self.frame, text=tr(self.nb_title))
         self.nb_index = app.nb.index(self.frame)
         app.nb.tab(self.nb_index, state="disabled")
 
     # ---- UI ------------------------------------------------------------------------------------
     def _build(self):
         f, app = self.frame, self.app
-        ttk.Label(f, text="Sohbetleri yedekle (TXT + görseller)", style="H.TLabel").pack(anchor="w")
+        ttk.Label(f, text=tr("Sohbetleri yedekle (TXT + görseller)"), style="H.TLabel").pack(anchor="w")
         ttk.Label(f, style="Sub.TLabel", wraplength=880, justify="left",
-                  text="Seçtiğin sohbetleri tek tek dışa aktarır. Her kişi için kendi adında bir klasör açılır: içinde "
+                  text=tr("Seçtiğin sohbetleri tek tek dışa aktarır. Her kişi için kendi adında bir klasör açılır: içinde "
                        "sohbetin metin dosyası (sohbet.txt) ve sohbette gönderilen görseller olur. Bu işlem yalnızca "
-                       "OKUR; hiçbir şey silinmez.").pack(anchor="w", pady=(2, 8))
+                       "OKUR; hiçbir şey silinmez.")).pack(anchor="w", pady=(2, 8))
 
         row = ttk.Frame(f, style="Card.TFrame")
         row.pack(fill="x", pady=(0, 4))
-        ttk.Label(row, text="Yedek klasörü:", style="Card.TLabel").pack(side="left")
+        ttk.Label(row, text=tr("Yedek klasörü:"), style="Card.TLabel").pack(side="left")
         ent = ttk.Entry(row, textvariable=self.var_dir, width=58)
         ent.pack(side="left", padx=8, fill="x", expand=True)
-        self.btn_dir = app.button(row, "Klasör seç…", self.choose_folder, kind="secondary")
+        self.btn_dir = app.button(row, tr("Klasör seç…"), self.choose_folder, kind="secondary")
         self.btn_dir.pack(side="left")
-        self.btn_open = app.button(row, "Klasörü aç", self.open_folder, kind="secondary")
+        self.btn_open = app.button(row, tr("Klasörü aç"), self.open_folder, kind="secondary")
         self.btn_open.pack(side="left", padx=(8, 0))
 
         opts = ttk.Frame(f, style="Card.TFrame")
         opts.pack(fill="x", pady=(4, 6))
-        ttk.Checkbutton(opts, text="Görselleri indir", variable=self.var_img, command=app.save_settings).pack(side="left")
-        ttk.Checkbutton(opts, text="Videoları indir (büyük olabilir)", variable=self.var_vid,
+        ttk.Checkbutton(opts, text=tr("Görselleri indir"), variable=self.var_img, command=app.save_settings).pack(side="left")
+        ttk.Checkbutton(opts, text=tr("Videoları indir (büyük olabilir)"), variable=self.var_vid,
                         command=app.save_settings).pack(side="left", padx=14)
-        ttk.Checkbutton(opts, text="Sesli mesajları indir", variable=self.var_voice,
+        ttk.Checkbutton(opts, text=tr("Sesli mesajları indir"), variable=self.var_voice,
                         command=app.save_settings).pack(side="left")
-        self.btn_load = app.button(opts, "Sohbetleri yükle", self.load_chats)
+        find = ttk.Frame(f, style="Card.TFrame")            # own row: nothing gets squeezed in any language
+        find.pack(fill="x", pady=(0, 6))
+        ttk.Label(find, text=tr("Ara:"), style="Card.TLabel").pack(side="left", padx=(0, 6))
+        ttk.Entry(find, textvariable=self.var_filter, width=28).pack(side="left")
+        self.btn_load = app.button(find, tr("Sohbetleri yükle"), self.load_chats)
         self.btn_load.pack(side="right")
-        ent2 = ttk.Entry(opts, textvariable=self.var_filter, width=16)
-        ent2.pack(side="right", padx=(0, 10))
-        ttk.Label(opts, text="Ara:", style="Card.TLabel").pack(side="right", padx=(0, 4))
         self.var_filter.trace_add("write", lambda *a: self.render())
 
         # Bottom widgets first so the list can never push them out of view.
-        self.lbl_status = ttk.Label(f, text="Önce 'Sohbetleri yükle' düğmesine bas.", style="Sub.TLabel")
+        self.lbl_status = ttk.Label(f, text=tr("Önce 'Sohbetleri yükle' düğmesine bas."), style="Sub.TLabel")
         self.lbl_status.pack(side="bottom", anchor="w")
         self.pb = ttk.Progressbar(f, mode="determinate")
         self.pb.pack(side="bottom", fill="x", pady=(10, 2))
@@ -178,19 +180,19 @@ class BackupTab:
         bar.pack(side="bottom", fill="x", pady=(10, 0))
         self.lbl_count = ttk.Label(bar, text="", style="Card.TLabel")
         self.lbl_count.pack(side="left")
-        self.btn_stop = app.button(bar, "Durdur", app.stop, primary=False)
+        self.btn_stop = app.button(bar, tr("Durdur"), app.stop, primary=False)
         self.btn_stop.pack(side="right")
-        self.btn_start = app.button(bar, "Seçilenleri yedekle", self.start, kind="success")
+        self.btn_start = app.button(bar, tr("Seçilenleri yedekle"), self.start, kind="success")
         self.btn_start.pack(side="right", padx=8)
-        self.btn_all = app.button(bar, "Hepsini seç", self.select_all, kind="secondary")
+        self.btn_all = app.button(bar, tr("Hepsini seç"), self.select_all, kind="secondary")
         self.btn_all.pack(side="right")
 
         mid = ttk.Frame(f, style="Card.TFrame")
         mid.pack(fill="both", expand=True)
         self.tv = ttk.Treeview(mid, columns=("status", "who", "last"), show="headings", selectmode="extended", height=5)
-        self.tv.heading("status", text="Durum", anchor="w")
-        self.tv.heading("who", text="Sohbet", anchor="w")
-        self.tv.heading("last", text="Son etkinlik", anchor="w")
+        self.tv.heading("status", text=tr("Durum"), anchor="w")
+        self.tv.heading("who", text=tr("Sohbet"), anchor="w")
+        self.tv.heading("last", text=tr("Son etkinlik"), anchor="w")
         self.tv.column("status", width=250, stretch=False)
         self.tv.column("who", width=340)
         self.tv.column("last", width=150, stretch=False)
@@ -201,7 +203,7 @@ class BackupTab:
         self.tv.configure(yscrollcommand=sb.set)
         self.tv.pack(side="left", fill="both", expand=True)
         sb.pack(side="left", fill="y")
-        app.empty_hints.add(self.tv, "Henüz sohbet yüklenmedi.\nYukarıdaki düğmeyle sohbetlerini listele.")
+        app.empty_hints.add(self.tv, tr("Henüz sohbet yüklenmedi.\nYukarıdaki düğmeyle sohbetlerini listele."))
         self.tv.bind("<<TreeviewSelect>>", lambda e: self._count())
         self.btn_stop.configure(state="disabled")
         self.btn_start.configure(state="disabled")
@@ -221,7 +223,7 @@ class BackupTab:
         self.threads = []
         self.tv.delete(*self.tv.get_children())
         self.lbl_count.configure(text="")
-        self.lbl_status.configure(text="Önce 'Sohbetleri yükle' düğmesine bas.")
+        self.lbl_status.configure(text=tr("Önce 'Sohbetleri yükle' düğmesine bas."))
         self.btn_start.configure(state="disabled")
 
     def load_protected(self):
@@ -234,7 +236,7 @@ class BackupTab:
     # ---- folder ----------------------------------------------------------------------------------
     def choose_folder(self):
         d = filedialog.askdirectory(parent=self.app.root, initialdir=self.var_dir.get() or None,
-                                    title="Yedek klasörünü seç")
+                                    title=tr("Yedek klasörünü seç"))
         if d:
             self.var_dir.set(os.path.normpath(d))
             self.app.save_settings()
@@ -245,7 +247,7 @@ class BackupTab:
             os.makedirs(d, exist_ok=True)
             os.startfile(d)
         except OSError as e:
-            self.app.log(f"Klasör açılamadı: {e}")
+            self.app.log(tr("Klasör açılamadı: {0}", e))
 
     # ---- list ------------------------------------------------------------------------------------
     def render(self):
@@ -259,14 +261,14 @@ class BackupTab:
             if flt and flt not in title.lower():
                 continue
             tid = str(t.get("thread_id"))
-            self.tv.insert("", "end", iid=tid, values=("Bekliyor", title, self.app.thread_time(t)))
+            self.tv.insert("", "end", iid=tid, values=(tr("Bekliyor"), title, self.app.thread_time(t)))
         keep = [i for i in sel if self.tv.exists(i)]
         if keep:
             self.tv.selection_set(keep)
         self._count()
 
     def _count(self):
-        self.lbl_count.configure(text=f"{len(self.tv.selection())} seçili · {len(self.tv.get_children())} sohbet")
+        self.lbl_count.configure(text=tr("{0} seçili · {1} sohbet", len(self.tv.selection()), len(self.tv.get_children())))
 
     def select_all(self):
         self.tv.selection_set(self.tv.get_children())
@@ -282,7 +284,7 @@ class BackupTab:
         self.tv.delete(*self.tv.get_children())
         self.pb.configure(mode="indeterminate")
         self.pb.start(12)
-        self.lbl_status.configure(text="Sohbetler yükleniyor...")
+        self.lbl_status.configure(text=tr("Sohbetler yükleniyor..."))
         app.begin_run(self.lbl_status)
 
         def work():
@@ -295,7 +297,7 @@ class BackupTab:
                         if tid not in seen:
                             seen.add(tid)
                             found.append(t)
-                    app.post(lambda n=len(found): self.lbl_status.configure(text=f"Yüklenen sohbet: {n}"))
+                    app.post(lambda n=len(found): self.lbl_status.configure(text=tr("Yüklenen sohbet: {0}", n)))
                     cursor = inbox.get("oldest_cursor")
                     if not inbox.get("has_older") or not cursor:
                         break
@@ -307,8 +309,8 @@ class BackupTab:
             except Exception as e:
                 msg = friendly(e)
                 app.post(lambda: (self.pb.stop(), self.pb.configure(mode="determinate"), app.set_busy(False),
-                                  self.lbl_status.configure(text=f"Sohbetler yüklenemedi: {msg}"),
-                                  app.log(f"Sohbet yedekle: yüklenemedi: {msg}")))
+                                  self.lbl_status.configure(text=tr("Sohbetler yüklenemedi: {0}", msg)),
+                                  app.log(tr("Sohbet yedekle: yüklenemedi: {0}", msg))))
 
         app.run_bg(work)
 
@@ -318,9 +320,9 @@ class BackupTab:
         self.threads = found
         self.app.set_busy(False)
         self.render()
-        self.lbl_status.configure(text=f"{len(found)} sohbet yüklendi. Yedeklemek istediklerini seç." if found
-                                  else "Sohbet bulunamadı.")
-        self.app.log(f"Sohbet yedekle: {len(found)} sohbet listelendi.")
+        self.lbl_status.configure(text=tr("{0} sohbet yüklendi. Yedeklemek istediklerini seç.", len(found)) if found
+                                  else tr("Sohbet bulunamadı."))
+        self.app.log(tr("Sohbet yedekle: {0} sohbet listelendi.", len(found)))
 
     # ---- backup ----------------------------------------------------------------------------------
     def start(self):
@@ -329,14 +331,14 @@ class BackupTab:
             return
         chosen = list(self.tv.selection())
         if not chosen:
-            ui.showinfo(APP_TITLE, "Önce yedeklenecek sohbetleri seç.\n(Ctrl / Shift ile çoklu seçim yapabilir ya da "
-                                   "'Hepsini seç' düğmesini kullanabilirsin.)")
+            ui.showinfo(app_title(), tr("Önce yedeklenecek sohbetleri seç.\n(Ctrl / Shift ile çoklu seçim yapabilir ya da "
+                                   "'Hepsini seç' düğmesini kullanabilirsin.)"))
             return
         root_dir = self.var_dir.get().strip()
         try:
             os.makedirs(root_dir, exist_ok=True)
         except OSError as e:
-            ui.showwarning(APP_TITLE, f"Yedek klasörü oluşturulamadı:\n{root_dir}\n\n{e}")
+            ui.showwarning(app_title(), tr("Yedek klasörü oluşturulamadı:\n{0}\n\n{1}", root_dir, e))
             return
         chosen_set = set(chosen)
         threads = [t for t in self.threads if str(t.get("thread_id")) in chosen_set]
@@ -347,7 +349,7 @@ class BackupTab:
         app.save_settings()
         total = len(threads)
         self.pb.configure(maximum=max(total, 1), value=0)
-        app.log(f"Sohbet yedekle: {total} sohbet yedeklenecek → {root_dir}")
+        app.log(tr("Sohbet yedekle: {0} sohbet yedeklenecek → {1}", total, root_dir))
 
         def mark(tid, text, tag=""):
             if self.tv.exists(tid):
@@ -363,32 +365,32 @@ class BackupTab:
                     if app.stop_event.is_set():
                         break
                     tid, name = str(t.get("thread_id")), app.thread_title(t)
-                    app.post(lambda tid=tid: mark(tid, "Yedekleniyor…", "run"))
+                    app.post(lambda tid=tid: mark(tid, tr("Yedekleniyor…"), "run"))
                     try:
                         res = self._export(t, root_dir, opts, profile, n, total)
                     except StopRequested:
-                        app.post(lambda tid=tid: mark(tid, "Durduruldu"))
+                        app.post(lambda tid=tid: mark(tid, tr("Durduruldu")))
                         break
                     except Exception as e:
                         failed += 1
                         msg = friendly(e)
-                        app.post(lambda tid=tid, msg=msg: mark(tid, f"Hata: {msg[:60]}", "err"))
-                        app.post(lambda name=name, msg=msg: app.log(f"Hata ({name}): {msg}"))
+                        app.post(lambda tid=tid, msg=msg: mark(tid, tr("Hata: {0}", msg[:60]), "err"))
+                        app.post(lambda name=name, msg=msg: app.log(tr("Hata ({0}): {1}", name, msg)))
                         if limit_kind(e) is not None:
                             hard = True
-                            app.post(lambda: app.log("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
-                                                     "Birkaç saat sonra tekrar dene."))
+                            app.post(lambda: app.log(tr("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
+                                                     "Birkaç saat sonra tekrar dene.")))
                             break
                         continue
                     ok_n += 1
                     msgs_n += res["messages"]
                     files_n += res["files"]
-                    txt = f"Tamam ✓  ({res['messages']} mesaj, {res['files']} dosya" + (
-                        f", {res['failed']} indirilemedi" if res["failed"] else "") + ")"
+                    txt = (tr("Tamam ✓  ({0} mesaj, {1} dosya, {2} indirilemedi)", res["messages"], res["files"], res["failed"])
+                           if res["failed"] else tr("Tamam ✓  ({0} mesaj, {1} dosya)", res["messages"], res["files"]))
                     app.post(lambda tid=tid, txt=txt: mark(tid, txt, "done"))
                     app.post(lambda n=n: self.pb.configure(value=n))
                     app.post(lambda name=name, res=res: app.log(
-                        f"Yedeklendi: {name} → {res['messages']} mesaj, {res['files']} dosya ({res['folder']})"))
+                        tr("Yedeklendi: {0} → {1} mesaj, {2} dosya ({3})", name, res['messages'], res['files'], res['folder'])))
             finally:
                 stopped = app.stop_event.is_set()
                 app.post(lambda: self._done(ok_n, failed, msgs_n, files_n, stopped, hard, root_dir))
@@ -422,7 +424,7 @@ class BackupTab:
                 with open(marker, "w", encoding="utf-8") as fp:      # adopt an untagged folder
                     fp.write(tid)
                 return folder
-        raise OSError("klasör adı çakışması")
+        raise OSError(tr("klasör adı çakışması"))
 
     def fetch_messages(self, tid, label):
         """Whole history of one thread, oldest first."""
@@ -444,7 +446,7 @@ class BackupTab:
                 if iid and iid not in seen:
                     seen.add(iid)
                     items.append(it)
-            app.post(lambda n=len(items), label=label: self.lbl_status.configure(text=f"{label}: {n} mesaj okundu..."))
+            app.post(lambda n=len(items), label=label: self.lbl_status.configure(text=tr("{0}: {1} mesaj okundu...", label, n)))
             nxt = thread.get("oldest_cursor")
             if not (thread.get("has_older") and nxt) or nxt == cursor:
                 break
@@ -462,7 +464,7 @@ class BackupTab:
         wanted = {k for k, v in opts.items() if v}
         lo, hi = PROFILES[profile]["download"]
         files, ok_files, failed = {}, 0, 0
-        dirs = {"image": "gorseller", "video": "videolar", "voice": "sesli_mesajlar"}
+        dirs = {"image": tr("gorseller"), "video": tr("videolar"), "voice": tr("sesli_mesajlar")}
         for idx, it in enumerate(items, 1):
             if app.stop_event.is_set():
                 raise StopRequested()
@@ -472,7 +474,7 @@ class BackupTab:
                 sub = dirs[kind]
                 os.makedirs(os.path.join(folder, sub), exist_ok=True)
                 ts = _ts(it)
-                sender = "ben" if self._mine(it) else safe_name(users.get(str(it.get("user_id")), "kisi"), "kisi", 30)
+                sender = tr("ben") if self._mine(it) else safe_name(users.get(str(it.get("user_id")), "kisi"), "kisi", 30)
                 fname = f"{idx:05d}_{ts:%Y%m%d-%H%M%S}_{sender}{file_ext(url, kind)}" if ts else \
                     f"{idx:05d}_{sender}{file_ext(url, kind)}"
                 rel, dest = f"{sub}/{fname}", os.path.join(folder, sub, fname)
@@ -490,9 +492,9 @@ class BackupTab:
                     failed += 1
                     if is_limit_error(e):
                         raise
-                    app.post(lambda e=e, fname=fname: app.log(f"Dosya indirilemedi ({fname}): {friendly(e)}"))
+                    app.post(lambda e=e, fname=fname: app.log(tr("Dosya indirilemedi ({0}): {1}", fname, friendly(e))))
                 app.post(lambda k=ok_files + failed, label=label: self.lbl_status.configure(
-                    text=f"{label}: dosya {k} indiriliyor..."))
+                    text=tr("{0}: dosya {1} indiriliyor...", label, k)))
                 self._sleep(lo, hi)
         self._write_txt(folder, thread, name, items, users, files)
         return {"messages": len(items), "files": ok_files, "failed": failed, "folder": folder}
@@ -502,16 +504,16 @@ class BackupTab:
 
     def _write_txt(self, folder, thread, name, items, users, files):
         me = self.app.my_username or "ben"
-        lines = [f"Instagram Araçları · Sohbet yedeği",
-                 f"Sohbet     : {name}",
-                 f"Katılımcı  : {', '.join(sorted(set(users.values())) + [me]) if users else me}",
-                 f"Yedek tarihi: {datetime.now():%Y-%m-%d %H:%M:%S}",
-                 f"Mesaj sayısı: {len(items)}",
+        lines = [tr("Instagram Araçları · Sohbet yedeği"),
+                 tr("Sohbet     : {0}", name),
+                 tr("Katılımcı  : {0}", (', '.join(sorted(set(users.values())) + [me]) if users else me)),
+                 tr("Yedek tarihi: {0:%Y-%m-%d %H:%M:%S}", datetime.now()),
+                 tr("Mesaj sayısı: {0}", len(items)),
                  "=" * 60, ""]
         for it in items:
-            sender = "Ben" if self._mine(it) else (users.get(str(it.get("user_id"))) or f"ID {it.get('user_id')}")
+            sender = tr("Ben") if self._mine(it) else (users.get(str(it.get("user_id"))) or f"ID {it.get('user_id')}")
             lines += format_message(it, sender, files)
-        path = os.path.join(folder, "sohbet.txt")
+        path = os.path.join(folder, tr("sohbet.txt"))
         tmp = path + ".tmp"
         with open(tmp, "w", encoding="utf-8-sig", newline="\r\n") as fp:      # BOM: Notepad shows Turkish letters right
             fp.write("\n".join(lines) + "\n")
@@ -521,14 +523,14 @@ class BackupTab:
         app = self.app
         app.set_busy(False)
         self.last_result = {"ok": ok_n, "failed": failed, "messages": msgs_n, "files": files_n, "dir": root_dir}
-        summary = f"Yedeklenen sohbet: {ok_n} · mesaj: {msgs_n} · dosya: {files_n}" + (
-            f" · hata: {failed}" if failed else "")
-        self.lbl_status.configure(text=f"Bitti · {summary}" + (" · (durduruldu)" if stopped else ""))
-        app.log(f"Sohbet yedekle: bitti. {summary}." + (" Kullanıcı durdurdu." if stopped else ""))
-        text = f"{summary}\n\nKlasör:\n{root_dir}"
+        summary = tr("Yedeklenen sohbet: {0} · mesaj: {1} · dosya: {2}", ok_n, msgs_n, files_n) + (
+            tr(" · hata: {0}", failed) if failed else "")
+        self.lbl_status.configure(text=tr("Bitti · {0}", summary) + (tr(" · (durduruldu)") if stopped else ""))
+        app.log(tr("Sohbet yedekle: bitti. {0}.", summary) + (tr(" Kullanıcı durdurdu.") if stopped else ""))
+        text = tr("{0}\n\nKlasör:\n{1}", summary, root_dir)
         if hard:
-            text += "\n\nInstagram sınırlama uyardığı için durduruldu. Birkaç saat sonra kalan sohbetleri yedekleyebilirsin."
-        ui.showinfo(APP_TITLE, text)
+            text += tr("\n\nInstagram sınırlama uyardığı için durduruldu. Birkaç saat sonra kalan sohbetleri yedekleyebilirsin.")
+        ui.showinfo(app_title(), text)
 
 
 # ================================================================================================ account
@@ -568,7 +570,7 @@ def mask(value, keep=2):
 
 
 class AccountTab:
-    nb_title = "Hesap bilgisi"
+    nb_title = T("Hesap bilgisi")
 
     def __init__(self, app):
         self.app = app
@@ -576,24 +578,24 @@ class AccountTab:
         self.loaded = False
         self.rows = {}
         self._build()
-        app.nb.add(self.frame, text=self.nb_title)
+        app.nb.add(self.frame, text=tr(self.nb_title))
         self.nb_index = app.nb.index(self.frame)
         app.nb.tab(self.nb_index, state="disabled")
         self.pb = self._pb
         app.nb.bind("<<NotebookTabChanged>>", self._tab_changed, add="+")
 
-    FIELDS = (("username", "Kullanıcı adı"), ("full_name", "Ad soyad"), ("pk", "Kullanıcı ID"),
-              ("created", "Hesap açılış tarihi"), ("age", "Hesap yaşı"), ("country", "Ülke"),
-              ("former", "Eski kullanıcı adları"), ("posts", "Gönderi sayısı"), ("followers", "Takipçi"),
-              ("following", "Takip edilen"), ("kind", "Hesap türü"), ("bio", "Biyografi"), ("link", "Web sitesi"),
-              ("email", "E-posta (gizli)"), ("phone", "Telefon (gizli)"))
+    FIELDS = (("username", T("Kullanıcı adı")), ("full_name", T("Ad soyad")), ("pk", T("Kullanıcı ID")),
+              ("created", T("Hesap açılış tarihi")), ("age", T("Hesap yaşı")), ("country", T("Ülke")),
+              ("former", T("Eski kullanıcı adları")), ("posts", T("Gönderi sayısı")), ("followers", T("Takipçi")),
+              ("following", T("Takip edilen")), ("kind", T("Hesap türü")), ("bio", T("Biyografi")), ("link", T("Web sitesi")),
+              ("email", T("E-posta (gizli)")), ("phone", T("Telefon (gizli)")))
 
     def _build(self):
         f, app = self.frame, self.app
         head = ttk.Frame(f, style="Card.TFrame")
         head.pack(fill="x")
-        ttk.Label(head, text="Hesap bilgisi", style="H.TLabel").pack(side="left")
-        self.btn_refresh = app.button(head, "Yenile", self.refresh, kind="secondary")
+        ttk.Label(head, text=tr("Hesap bilgisi"), style="H.TLabel").pack(side="left")
+        self.btn_refresh = app.button(head, tr("Yenile"), self.refresh, kind="secondary")
         self.btn_refresh.pack(side="right")
         self.lbl_status = ttk.Label(f, text="", style="Sub.TLabel", wraplength=880, justify="left")
         self.lbl_status.pack(side="bottom", anchor="w", pady=(8, 0))
@@ -622,13 +624,13 @@ class AccountTab:
         half = (len(self.FIELDS) + 1) // 2
         for i, (key, label) in enumerate(self.FIELDS):
             r, c = i % half, (i // half) * 2
-            ttk.Label(grid, text=label + ":", style="Sub.TLabel").grid(row=r, column=c, sticky="ne", padx=(0, 10), pady=3)
+            ttk.Label(grid, text=tr(label) + ":", style="Sub.TLabel").grid(row=r, column=c, sticky="ne", padx=(0, 10), pady=3)
             v = ttk.Label(grid, text="—", style="Card.TLabel", wraplength=340, justify="left")
             v.grid(row=r, column=c + 1, sticky="nw", pady=3, padx=(0, 24))
             self.rows[key] = v
         ttk.Label(f, style="Sub.TLabel", wraplength=880, justify="left",
-                  text="Hesap açılış tarihi Instagram'ın 'Bu hesap hakkında' bilgisinden okunur; Instagram bunu "
-                       "bazı hesaplarda vermeyebilir. E-posta ve telefon ekranda kısmen gizlenir."
+                  text=tr("Hesap açılış tarihi Instagram'ın 'Bu hesap hakkında' bilgisinden okunur; Instagram bunu "
+                       "bazı hesaplarda vermeyebilir. E-posta ve telefon ekranda kısmen gizlenir.")
                   ).pack(side="bottom", anchor="w")
 
     # ---- integration -----------------------------------------------------------------------------
@@ -670,7 +672,7 @@ class AccountTab:
         app.set_busy(True)
         self._pb.configure(mode="indeterminate")
         self._pb.start(12)
-        self.lbl_status.configure(text="Hesap bilgileri okunuyor...")
+        self.lbl_status.configure(text=tr("Hesap bilgileri okunuyor..."))
         app.begin_run(self.lbl_status)
         uid = app.my_user_id
 
@@ -685,7 +687,7 @@ class AccountTab:
             except StopRequested:
                 raise
             except Exception as e:
-                notes.append(f"Hesap bilgisi okunamadı: {friendly(e)}")
+                notes.append(tr("Hesap bilgisi okunamadı: {0}", friendly(e)))
             try:
                 usr = app.guarded(lambda: c.user_info(uid))
                 data.update(posts=usr.media_count, followers=usr.follower_count, following=usr.following_count)
@@ -694,7 +696,7 @@ class AccountTab:
             except StopRequested:
                 raise
             except Exception as e:
-                notes.append(f"Profil sayıları okunamadı: {friendly(e)}")
+                notes.append(tr("Profil sayıları okunamadı: {0}", friendly(e)))
             try:
                 about = app.guarded(lambda: c.user_about_v1(uid))
                 data.update(created=(about.date or "").strip(), country=(about.country or "").strip(),
@@ -702,15 +704,15 @@ class AccountTab:
             except StopRequested:
                 raise
             except Exception as e:
-                notes.append("Hesap açılış tarihi Instagram'dan alınamadı "
-                             "(Ayarlar → Hesap merkezi → Bilgilerini indir bölümünde bulunur).")
+                notes.append(tr("Hesap açılış tarihi Instagram'dan alınamadı "
+                             "(Ayarlar → Hesap merkezi → Bilgilerini indir bölümünde bulunur)."))
             app.post(lambda: self._show(data, notes))
 
         def guarded_work():
             try:
                 work()
             except StopRequested:
-                app.post(lambda: self._show({}, ["Durduruldu."]))
+                app.post(lambda: self._show({}, [tr("Durduruldu.")]))
 
         app.run_bg(guarded_work)
 
@@ -719,23 +721,23 @@ class AccountTab:
         self._pb.configure(mode="determinate", value=0)
         self.app.set_busy(False)
         self.loaded = bool(data)
-        fmt = lambda v: f"{v:,}".replace(",", ".") if isinstance(v, int) else (v or "—")
+        fmt = lambda v: (f"{v:,}".replace(",", ".") if get_language() == "tr" else f"{v:,}") if isinstance(v, int) else (v or "—")
         self.lbl_name.configure(text=data.get("full_name") or data.get("username") or "—")
         self.lbl_handle.configure(text=f"@{data['username']}" if data.get("username") else "")
         self.avatar.itemconfigure("ch", text=(data.get("username") or "?")[:1].upper())
         kinds = []
         if data.get("private") is not None and "private" in data:
-            kinds.append("Gizli hesap" if data["private"] else "Herkese açık hesap")
+            kinds.append(tr("Gizli hesap") if data["private"] else tr("Herkese açık hesap"))
         if data.get("verified"):
-            kinds.append("Doğrulanmış ✓")
+            kinds.append(tr("Doğrulanmış ✓"))
         if data.get("business"):
-            kinds.append("İşletme hesabı")
+            kinds.append(tr("İşletme hesabı"))
         created = data.get("created", "")
         join = parse_join_date(created)
         age = ""
         if join:
             y, m = account_age(join)
-            age = (f"{y} yıl " if y else "") + f"{m} ay" if (y or m) else "1 aydan az"
+            age = ((tr("{0} yıl ", y) if y else "") + tr("{0} ay", m)) if (y or m) else tr("1 aydan az")
         values = {"username": data.get("username"), "full_name": data.get("full_name"), "pk": data.get("pk"),
                   "created": created or None, "age": age or None, "country": data.get("country"),
                   "former": data.get("former"), "posts": fmt(data.get("posts")) if "posts" in data else None,
@@ -745,5 +747,5 @@ class AccountTab:
                   "email": data.get("email"), "phone": data.get("phone")}
         for key, lbl in self.rows.items():
             lbl.configure(text=values.get(key) or "—")
-        self.lbl_status.configure(text=" ".join(notes) if notes else "Bilgiler güncel.")
-        self.app.log("Hesap bilgisi güncellendi." + (f" ({len(notes)} uyarı)" if notes else ""))
+        self.lbl_status.configure(text=" ".join(notes) if notes else tr("Bilgiler güncel."))
+        self.app.log(tr("Hesap bilgisi güncellendi.") + (tr(" ({0} uyarı)", len(notes)) if notes else ""))

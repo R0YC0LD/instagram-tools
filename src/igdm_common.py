@@ -12,7 +12,8 @@ from igdm_core import BlockedDestination, APP_DIR
 from instagrapi.exceptions import (BadPassword, ChallengeRequired, PleaseWaitFewMinutes, RateLimitError,
                                    FeedbackRequired, ClientThrottledError, LoginRequired)
 
-from igdm_meta import APP_TITLE, VERSION  # noqa: E402  (single source of truth, light-weight module)
+from igdm_meta import VERSION  # noqa: E402  (single source of truth, light-weight module)
+from igdm_i18n import tr, T  # noqa: E402
 
 # ---- design tokens (used by igdm_ui and the tabs) ---------------------------------------------
 ACCENT = "#6366f1"          # indigo: primary actions
@@ -105,10 +106,26 @@ class Pacer:
 def fmt_duration(seconds):
     seconds = int(seconds)
     if seconds < 90:
-        return f"{seconds} sn"
+        return tr("{0} sn", seconds)
     if seconds < 5400:
-        return f"{seconds / 60:.0f} dk"
-    return f"{seconds / 3600:.1f} saat"
+        return tr("{0:.0f} dk", seconds / 60)
+    return tr("{0:.1f} saat", seconds / 3600)
+
+
+# Speed-profile ids are stored in the settings file as-is (Turkish); only their display names are translated.
+_PROFILE_NAMES = (T("Güvenli"), T("Dengeli"), T("Hızlı"))
+
+
+def profile_label(profile_id):
+    return tr(profile_id)
+
+
+def profile_id(label):
+    """Reverse of profile_label (falls back to the default profile)."""
+    for pid in PROFILES:
+        if tr(pid) == label or pid == label:
+            return pid
+    return DEFAULT_PROFILE
 
 
 def load_json(path, default):
@@ -165,20 +182,20 @@ def is_network_error(e):
 
 def friendly(e):
     if isinstance(e, BlockedDestination):
-        return f"Güvenlik kilidi bağlantıyı engelledi: {e}"
+        return tr("Güvenlik kilidi bağlantıyı engelledi: {0}", e)
     if "out of date" in str(e).lower() or "needs_upgrade" in str(e).lower():
-        return ("Instagram bu programın kullandığı uygulama sürümünü artık kabul etmiyor (şifreyle girişte bilinen "
-                "sorun, özellikle 2 adımlı doğrulamalı hesaplarda). Şifre veya kodun yanlış değil. "
-                "Sağdaki 'B · Tarayıcı oturumuyla giriş' yöntemini dene.")
+        return tr("Instagram bu programın kullandığı uygulama sürümünü artık kabul etmiyor (şifreyle girişte bilinen "
+                  "sorun, özellikle 2 adımlı doğrulamalı hesaplarda). Şifre veya kodun yanlış değil. "
+                  "Sağdaki 'B · Tarayıcı oturumuyla giriş' yöntemini dene.")
     if isinstance(e, BadPassword):
-        return "Kullanıcı adı veya şifre hatalı."
+        return tr("Kullanıcı adı veya şifre hatalı.")
     if isinstance(e, ChallengeRequired):
-        return ("Instagram ek doğrulama istiyor. Instagram uygulamasında 'Bu bendim' bildirimini onayla, "
-                "sonra tekrar dene.")
+        return tr("Instagram ek doğrulama istiyor. Instagram uygulamasında 'Bu bendim' bildirimini onayla, "
+                  "sonra tekrar dene.")
     if isinstance(e, LoginRequired):
-        return "Instagram oturumun süresi dolmuş. Çıkış yapıp tekrar giriş yap."
+        return tr("Instagram oturumun süresi dolmuş. Çıkış yapıp tekrar giriş yap.")
     if is_limit_error(e):
-        return "Instagram hesabı geçici olarak sınırladı / uyardı. Birkaç saat bekleyip tekrar dene."
+        return tr("Instagram hesabı geçici olarak sınırladı / uyardı. Birkaç saat bekleyip tekrar dene.")
     if is_network_error(e):
-        return "Bağlantı sorunu: internet bağlantını kontrol et (işlem bağlantı gelince kendiliğinden yeniden denenir)."
+        return tr("Bağlantı sorunu: internet bağlantını kontrol et (işlem bağlantı gelince kendiliğinden yeniden denenir).")
     return str(e) or type(e).__name__

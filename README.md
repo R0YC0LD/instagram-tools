@@ -2,180 +2,231 @@
 
 <img src="docs/icon.png" width="128" alt="Pacman eating the Instagram glyph">
 
-# Instagram DM Temizleyici
+# Instagram Tools
 
-**Pacman, Instagram'ı yesin.** DM, story arşivi, engel ve beğeni temizliğini yavaş, güvenli ve tamamen otonom yapan Windows aracı.
+**Let Pacman eat Instagram.** A Windows toolkit for your own account: clean DMs, stories, blocks, likes and saved posts slowly, safely and fully automatically, back up your chats to text files + images, and see when your account was created.
 
-[![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d6?logo=windows&logoColor=white)](#-hızlı-başlangıç)
-[![Python](https://img.shields.io/badge/python-3.12-3776ab?logo=python&logoColor=white)](#-kaynaktan-çalıştırma)
+🌐 **English** · [Türkçe](README.tr.md) &nbsp;—&nbsp; the app itself speaks both, switch live in the sidebar.
+
+[![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d6?logo=windows&logoColor=white)](#-quick-start)
+[![Python](https://img.shields.io/badge/python-3.12-3776ab?logo=python&logoColor=white)](#-run-from-source)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-126%20checks-brightgreen)](#-testler)
-[![Made in Türkiye](https://img.shields.io/badge/made%20in-T%C3%BCrkiye-e30a17)](#-yapımcı)
+[![Tests](https://img.shields.io/badge/tests-231%20checks-brightgreen)](#-tests)
+[![Languages](https://img.shields.io/badge/languages-English%20%C2%B7%20T%C3%BCrk%C3%A7e-blue)](#-languages)
+[![Made in Türkiye](https://img.shields.io/badge/made%20in-T%C3%BCrkiye-e30a17)](#-author)
 
-<img src="docs/intro.gif" width="560" alt="Açılış ekranı: kayan credits ve Pacman">
+<img src="docs/intro-en.gif" width="560" alt="Intro screen: scrolling credits and Pacman">
 
 </div>
 
 ---
 
-## ✨ Ne yapar?
+## ✨ What it does
 
-| | Araç | Açıklama |
+| | Tool | Description |
 |---|---|---|
-| ✉️ | **DM sohbet temizliği** | Sohbetteki mesajlarını geri çeker (herkes için siler) ya da sohbeti komple gelen kutundan kaldırır. |
-| 🤖 | **Otomatik DM temizliği** | Tüm gelen kutusunu tarar, **son N sohbeti korur** (varsayılan 20), kalanını sırayla siler. Sabitlenmiş sohbetler de korunabilir. |
-| 🗂️ | **Story arşivi temizleyici** | Seçtiğin bir tarihten **önceki** arşivlenmiş storyleri siler. |
-| ⛔ | **Engel kaldırıcı** | Engellediğin tüm hesapların engelini tek tek, otomatik kaldırır. |
-| ♥ | **Beğeni temizleyici** | Beğendiğin tüm gönderi ve reellerin beğenisini kaldırır. |
+| ✉️ | **DM chat cleanup** | Unsend your messages in a chat (deleted for everyone) or remove the whole chat from your inbox. |
+| 🤖 | **Automatic DM cleanup** | Scans your whole inbox, **keeps the newest N chats** (default 20) and deletes the rest one by one. Pinned chats can be kept too. |
+| 💾 | **Chat backup** *(new)* | Exports the chats you pick **one by one**: a folder named after each person, holding the chat as a `chat.txt` and every **image** sent in it (optionally videos and voice messages). Read-only. |
+| 🗂️ | **Story archive cleaner** | Deletes archived stories **older than a date** you choose. |
+| ⛔ | **Unblocker** | Unblocks every account you blocked, one by one, automatically. |
+| ♥ | **Like remover** | Removes the like from every post and reel you liked. |
+| ⚑ | **Saved posts & reels cleaner** *(new)* | Removes everything from your *Saved* list, one by one. The posts themselves are not deleted. |
+| ☺ | **Account info** *(new)* | Name, user ID, **when the account was created and how old it is**, country, former usernames, posts / followers / following, account type, bio, link, masked e-mail and phone. |
 
-Her araçta aynı akış vardır: **tara → planı gör → onayla → program kendi başına bitirir.**
+Every cleanup tool follows the same flow: **scan → review the plan → confirm → the app finishes on its own.**
 
-- 🟢 Silinmesini istemediğin bir satıra **çift tıkla**: yeşil **Korumalı ★** olur ve program onu asla silmez (seçimin hatırlanır).
-- 🐢 İşlemler **insan gibi yavaş** yapılır (rastgele bekleme + ara sıra dinlenme molası). Üç hız profili vardır.
-- 🛡️ Instagram bir uyarı verirse program **kendiliğinden yavaşlar, dinlenir ve devam eder**; ciddi bir uyarıda hemen durur.
-- 🔐 Şifren diske yazılmaz, program **yalnızca Instagram sunucularına** bağlanabilir.
+- 🟢 **Double-click** a row you do not want touched: it turns green **Protected ★** and is never processed (your choice is remembered).
+- 🐢 Actions run **slowly, like a human** (random delays + periodic rests). Three speed profiles.
+- 🛡️ If Instagram warns, the app **slows down, rests and continues by itself**; on a serious warning it stops at once.
+- 🔐 Your password is never written to disk and the app can **only talk to Instagram servers**.
+- 🌐 **English and Türkçe**, switch any time in the sidebar without logging in again.
+- ⚡ Built to stay smooth: animations follow your **display refresh rate** (60/120/144 Hz…), work happens in the background, the window never freezes.
 
-## 🖼️ Ekran görüntüleri
+## 🖼️ Screenshots
 
 <table>
 <tr>
-<td><img src="docs/screenshots/01-login.png" alt="Giriş"></td>
-<td><img src="docs/screenshots/03-messages.png" alt="Mesajlar"></td>
+<td><img src="docs/screenshots/en/01-login.png" alt="Login"></td>
+<td><img src="docs/screenshots/en/04-dm-cleanup.png" alt="Automatic DM cleanup"></td>
 </tr>
 <tr>
-<td align="center"><sub>Giriş (şifre + 2 adımlı doğrulama ya da tarayıcı oturumu)</sub></td>
-<td align="center"><sub>Sohbet mesajları — gri satırlar karşı tarafındır</sub></td>
+<td align="center"><sub>Login (password + two-step verification, or browser session) · language switch at the bottom left</sub></td>
+<td align="center"><sub>Automatic DM cleanup — green row: a chat you protected by hand</sub></td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/04-dm-cleanup.png" alt="Otomatik DM temizliği"></td>
-<td><img src="docs/screenshots/05-stories.png" alt="Story arşivi"></td>
+<td><img src="docs/screenshots/en/09-backup.png" alt="Chat backup"></td>
+<td><img src="docs/screenshots/en/10-account.png" alt="Account info"></td>
 </tr>
 <tr>
-<td align="center"><sub>Otomatik DM temizliği — yeşil satır: elle korunan sohbet</sub></td>
-<td align="center"><sub>Story arşivi — tarihten öncekiler silinir</sub></td>
+<td align="center"><sub>Chat backup — one folder per person, TXT + images</sub></td>
+<td align="center"><sub>Account info — creation date, age and more</sub></td>
 </tr>
 <tr>
-<td><img src="docs/screenshots/06-blocked.png" alt="Engeller"></td>
-<td><img src="docs/screenshots/07-likes.png" alt="Beğeniler"></td>
+<td><img src="docs/screenshots/en/03-messages.png" alt="Messages"></td>
+<td><img src="docs/screenshots/en/05-stories.png" alt="Story archive"></td>
 </tr>
 <tr>
-<td align="center"><sub>Engelleri kaldır</sub></td>
-<td align="center"><sub>Beğenileri kaldır</sub></td>
+<td align="center"><sub>Chat messages — grey rows belong to the other person</sub></td>
+<td align="center"><sub>Story archive — everything before the date is deleted</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/en/06-blocked.png" alt="Blocks"></td>
+<td><img src="docs/screenshots/en/07-likes.png" alt="Likes"></td>
+</tr>
+<tr>
+<td align="center"><sub>Unblock</sub></td>
+<td align="center"><sub>Remove likes</sub></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/en/08-saved.png" alt="Saved"></td>
+<td><img src="docs/screenshots/en/11-confirm-dialog.png" alt="Confirmation dialog"></td>
+</tr>
+<tr>
+<td align="center"><sub>Saved posts &amp; reels</sub></td>
+<td align="center"><sub>Irreversible actions ask for a typed confirmation</sub></td>
 </tr>
 </table>
 
-<p align="center"><img src="docs/screenshots/08-confirm-dialog.png" width="420" alt="Onay penceresi"><br><sub>Geri alınamaz işlemler yazılı onay ister.</sub></p>
+> Every value in the screenshots is sample data (fake client); no real account was used. The same screenshots in Turkish are in [`docs/screenshots/tr`](docs/screenshots/tr).
 
-> Ekran görüntülerindeki tüm veriler örnektir (sahte istemci); gerçek bir hesap kullanılmamıştır.
+## 🚀 Quick start
 
-## 🚀 Hızlı başlangıç
+1. Download `InstagramTools.exe` from [**Releases**](../../releases/latest) (no Python needed).
+2. Double-click it. After the intro the **Login** page opens.
+3. Pick one of the login methods:
 
-1. [**Releases**](../../releases/latest) sayfasından `IGDMTool.exe` dosyasını indir (Python gerekmez).
-2. Çift tıkla. Açılış ekranından sonra **Giriş** sayfası gelir.
-3. Giriş yöntemlerinden birini seç:
+### A · Password login
+Type your username and password (the password is **visible** while typing; tick *Hide* if you prefer). If you use two-step verification the app asks for the code.
 
-### A · Şifreyle giriş
-Kullanıcı adı ve şifreni yaz (şifre **görünür** yazılır, istersen "Gizle"yi işaretle). 2 adımlı doğrulaman varsa program kodu sorar.
+### B · Browser session login (recommended)
+Instagram sometimes answers password logins with *"Your version of Instagram is out of date"* (especially on accounts with two-step verification). That is not a bug of this app; Instagram rejects the mobile app version that is being imitated. If that happens:
 
-### B · Tarayıcı oturumuyla giriş (önerilir)
-Instagram şifreyle girişte bazen *"Your version of Instagram is out of date"* hatası verir (özellikle 2 adımlı doğrulamalı hesaplarda). Bu, programın hatası değil; Instagram'ın taklit edilen mobil uygulama sürümünü reddetmesidir. Böyle olursa:
+1. Log in to instagram.com in your browser normally (enter the code there).
+2. `F12` → **Application** → **Cookies** → `https://www.instagram.com`
+3. Copy the `sessionid` value and paste it into box **B**.
 
-1. Tarayıcında instagram.com'a normal giriş yap (kodu orada gir).
-2. `F12` → **Application (Uygulama)** → **Cookies** → `https://www.instagram.com`
-3. `sessionid` değerini kopyala, programda **B** kutusuna yapıştır.
+> ⚠️ `sessionid` works like a password. Never share it. The app does not write it to disk (unless you choose to remember the session, encrypted).
 
-> ⚠️ `sessionid` bir şifre gibidir. Kimseyle paylaşma. Program onu diske yazmaz (istersen yalnızca şifreli olarak saklar).
+After login **every page** is available.
 
-Girişten sonra **tüm sayfalar** kullanılabilir.
+## 🌐 Languages
 
-## ⚙️ Hız profilleri ve güvenlik önlemleri
+The app starts in your Windows display language (Türkçe or English) and remembers your choice. Change it any time with the **LANGUAGE** box at the bottom left of the sidebar: the window is rebuilt in a moment, you stay logged in and keep your page. Confirmation words follow the language (`DELETE` / `REMOVE` in English, `SİL` / `KALDIR` in Turkish; the Turkish words are accepted in English mode too). Chat backups use localized file names (`chat.txt`, `images`… / `sohbet.txt`, `gorseller`…).
 
-Sol alttaki **Hız profili** tüm araçlar için geçerlidir. Süreler her seferinde rastgeledir; belirli sayıda işlemden sonra ayrıca uzun bir mola verilir.
+Adding a language = one file, `src/igdm_lang_<code>.py`, containing a `CATALOG` dictionary (see `igdm_lang_en.py`) plus one entry in `igdm_i18n.LANGS`; `tests/test_i18n.py` verifies that the catalog is complete and keeps every placeholder.
 
-| Profil | Mesaj | Sohbet | Story | Engel | Beğeni |
+## 💾 Chat backup in detail
+
+*Chat backup* page → **Load chats** → select the chats (Ctrl/Shift, or **Select all**) → **Back up selected**.
+
+```
+Instagram Backups/
+├─ alice.smith/
+│   ├─ chat.txt            ← whole conversation, oldest first (UTF-8 with BOM, opens fine in Notepad)
+│   └─ images/
+│       ├─ 00003_20260301-120300_alice.smith.jpg
+│       └─ 00004_20260301-120400_me.jpg
+├─ Weekend group/
+│   └─ …
+```
+
+- One folder per chat, named after the person (or the group title). Illegal Windows characters are replaced, duplicate names get `(2)`, reserved names like `CON` are handled.
+- `chat.txt` lists date, sender and text; images/videos/voice messages appear as `[Photo: images/…]` lines pointing at the downloaded file.
+- Images are on by default; **videos** and **voice messages** are optional. Files that already exist are skipped, so you can run it again to top up a backup.
+- Downloads go through the same network lock (only Instagram/Facebook CDN hosts) and the same pacing.
+
+## ⚙️ Speed profiles and safety
+
+The **Speed profile** box in the sidebar applies to all tools. Delays are random each time, and after a number of actions there is an additional longer rest.
+
+| Profile | Message | Chat | Story | Block | Like / Save |
 |---|---|---|---|---|---|
-| Güvenli | 60–120 sn | 30–60 sn | 20–40 sn | 45–90 sn | 20–40 sn |
-| **Dengeli** *(varsayılan)* | 30–60 sn | 15–30 sn | 10–20 sn | 25–50 sn | 10–20 sn |
-| Hızlı | 15–30 sn | 8–15 sn | 5–10 sn | 12–25 sn | 5–10 sn |
+| Safe | 60–120 s | 30–60 s | 20–40 s | 45–90 s | 20–40 s |
+| **Balanced** *(default)* | 30–60 s | 15–30 s | 10–20 s | 25–50 s | 10–20 s |
+| Fast | 15–30 s | 8–15 s | 5–10 s | 12–25 s | 5–10 s |
 
-**Uyarı geldiğinde:**
+**When a warning arrives:**
 
-- **Yumuşak uyarı** ("lütfen bekle", 429): 5–8 dk dinlenir, hızı %50 yavaşlatır, kaldığı yerden devam eder.
-- **Uyarılar üst üste gelirse** (otonom mod açıksa): 45–75 dk uzun mola verip kendiliğinden devam eder (en çok 3 kez).
-- **Ciddi uyarı** (doğrulama isteme, oturum düşmesi, *feedback required*): **hemen durur**.
-- **İnternet kopması:** 8 / 20 / 45 / 90 sn aralıklarla yeniden dener.
+- **Soft warning** ("please wait", 429): rests 5–8 min, slows down by 50 %, continues where it stopped.
+- **Repeated warnings** (autonomous mode on): a 45–75 min long rest, then continues on its own (at most 3 times).
+- **Serious warning** (verification requested, session dropped, *feedback required*): **stops immediately**.
+- **Internet drop:** retries after 8 / 20 / 45 / 90 s.
 
-**Güvenlik tasarımı:**
+**Security design:**
 
-- 🌐 **Ağ kilidi:** yalnızca `instagram.com`, `cdninstagram.com`, `facebook.com`, `fbcdn.net` adreslerine bağlanılabilir. Başka her adres (IP dahil) engellenir; iki katmanda: Python soketleri ve her HTTP isteği.
-- 🔑 **Oturum şifrelemesi:** "Hatırla" seçersen oturum **Windows DPAPI** ile yalnızca senin Windows hesabının açabileceği şekilde şifrelenir (`%LOCALAPPDATA%\IGDMTool`). Şifren hiçbir zaman diske yazılmaz.
-- 🧾 Program hiçbir telemetri toplamaz ve hiçbir yere veri göndermez.
-- 🖥️ İşlem sürerken bilgisayar uykuya geçmez; iki kopya aynı anda çalışamaz (istek hızı katlanmasın diye).
+- 🌐 **Network lock:** only `instagram.com`, `cdninstagram.com`, `facebook.com`, `fbcdn.net` can be reached. Any other address (IPs included) is blocked at two layers: Python sockets and every HTTP request.
+- 🔑 **Session encryption:** if you tick *Remember*, the session is encrypted with **Windows DPAPI** so only your Windows account can open it (`%LOCALAPPDATA%\IGDMTool`). Your password is never written to disk.
+- 🧾 No telemetry, nothing is sent anywhere.
+- 🖥️ The computer will not sleep while a task runs; two copies cannot run at the same time (so the request rate cannot double).
 
-> **Hiçbir hız profili "ceza yemezsin" garantisi vermez.** Instagram'ın gerçek limitleri açık değildir. Program riski azaltır, ama kullanım senin sorumluluğundadır. İlk seferde **Dengeli** ile başla, uzun listeleri birkaç güne böl.
+> **No speed profile guarantees you will not be limited.** Instagram's real limits are not public. The app reduces the risk, but use is at your own responsibility. Start with **Balanced** and split long lists over several days.
 
-## 🧭 Kullanım ipuçları
+## 🧭 Tips
 
-- **Otomatik DM temizliği:** *Sohbetleri tara ve planla* → liste "Korunacak / Silinecek" olarak gelir → `SİL` yazıp onayla. Yarıda kalırsa yeniden tara, kalan sohbetlerden devam eder.
-- **Kendi mesajlarını da geri çekmek** için "Silmeden önce mesajlarımı da geri çek" kutusunu işaretle (çok yavaştır). Yoksa Instagram yalnızca **senin** gelen kutundan siler; karşı taraf sohbeti görmeye devam eder.
-- Karşı tarafın mesajlarını **hiçbir yöntemle** silemezsin (Instagram izin vermez).
-- Onay kelimeleri Türkçe klavyeyle sorunsuz çalışır: `SİL`, `sil`, `SIL`, `KALDIR`…
-- Etkinlik günlüğü hem ekranda hem `%LOCALAPPDATA%\IGDMTool\igdmtool.log` dosyasında tutulur.
+- **Automatic DM cleanup:** *Scan chats and plan* → the list shows "Keep / Delete" → type `DELETE` to confirm. If it is interrupted, scan again and it carries on with the remaining chats.
+- To **also unsend your own messages**, tick *Also unsend my own messages…* (very slow). Otherwise Instagram only removes the chat from **your** inbox; the other person still sees it.
+- You can **never** delete the other person's messages (Instagram does not allow it).
+- Log lines are shown on screen and written to `%LOCALAPPDATA%\IGDMTool\igdmtool.log`.
 
-## 🚫 Desteklenmeyenler
+## 🚫 Not supported
 
-- **Repost temizleme:** Instagram'ın repost'u kaldırma isteği için doğrulanmış, belgelenmiş bir uç nokta bulunmadığından eklenmedi (tahminle istek göndermek hesap için risklidir).
-- Yorum beğenileri (Instagram bunları listelemiyor).
-- Windows dışındaki sistemler (DPAPI ve Tk penceresi Windows'a özeldir).
+- **Repost removal:** there is no verified, documented Instagram endpoint for removing a repost, so it was deliberately not added (sending guessed requests is risky for your account).
+- Comment likes (Instagram does not list them).
+- Anything other than Windows (DPAPI and the Tk window are Windows-specific).
 
-## 🛠️ Kaynaktan çalıştırma
+## 🛠️ Run from source
 
 ```powershell
-git clone https://github.com/R0YC0LD/instagram-pacman-cleaner.git
-cd instagram-pacman-cleaner
+git clone https://github.com/R0YC0LD/instagram-tools.git
+cd instagram-tools
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python src\igdm_launcher.py
 ```
 
-### .exe derleme
+### Build the .exe
 
 ```powershell
-.\build.ps1            # testleri çalıştırır ve dist\IGDMTool.exe üretir
-.\build.ps1 -SkipTests # testleri atlar
+.\build.ps1            # runs the tests and produces dist\InstagramTools.exe
+.\build.ps1 -SkipTests # skips the tests
 ```
 
-## 🧪 Testler
+## 🧪 Tests
 
-Gerçek Instagram'a **hiç bağlanmadan**, sahte bir istemciyle 126 kontrol çalışır (giriş/2FA, sayfalama, koruma listeleri, tarih filtresi, uyarı senaryoları, ağ kopması, ağ kilidi, arayüz, açılış ekranı…).
+231 checks run against a fake client, **without ever touching real Instagram** (login/2FA, paging, protection lists, date filter, warning scenarios, network drops, the network lock, UI, intro, backup files, saved posts, account page, both languages, 144 Hz smoothness…).
 
 ```powershell
 .\.venv\Scripts\python tests\run_all.py
 ```
 
-## 📁 Proje yapısı
+## 📁 Project layout
 
 ```
 src/
-  igdm_launcher.py   giriş noktası: açılış ekranı + arka planda yükleme
-  igdm_intro.py      kayan credits açılış ekranı (yalnızca tkinter)
-  igdm_app.py        ana pencere: giriş, sohbetler, mesajlar, otomatik DM temizliği
-  igdm_bulk.py       ortak "tara → planla → onayla → çalıştır" iskeleti + Story / Engel / Beğeni araçları
-  igdm_ui.py         tema, düz düğmeler, özel diyaloglar, yan menü
-  igdm_common.py     hız profilleri, uyarı sınıflandırması, Türkçe hata metinleri
-  igdm_core.py       ağ kilidi + DPAPI ile şifreli oturum
+  igdm_launcher.py   entry point: intro screen + background loading
+  igdm_intro.py      scrolling-credits intro (tkinter only)
+  igdm_app.py        main window: login, chats, messages, automatic DM cleanup, language switch
+  igdm_bulk.py       shared "scan → plan → confirm → run" framework + Story / Block / Like / Saved tools
+  igdm_extra.py      chat backup (TXT + images) and the account-info page
+  igdm_items.py      readable text for every kind of chat item
+  igdm_ui.py         theme, flat buttons, dialogs, sidebar
+  igdm_i18n.py       translation layer;  igdm_lang_en.py = English catalog
+  igdm_perf.py       refresh-rate aware timing, GIL hand-over during start-up
+  igdm_common.py     speed profiles, warning classification, friendly errors
+  igdm_core.py       network lock + DPAPI-encrypted session
   igdm_icon.py, igdm_meta.py, igdm_assets.py
-tests/               126 kontrollük test paketi (sahte istemci)
-tools/               make_icon.py (ikonu çizer), make_screenshots.py (README görselleri)
+tests/               231-check suite (fake client)
+tools/               make_icon.py, make_screenshots.py, i18n_keys.py
 ```
 
-## ⚠️ Sorumluluk reddi
+## ⚠️ Disclaimer
 
-Bu proje **resmî değildir**; Instagram / Meta ile hiçbir bağlantısı yoktur. Instagram'ın resmî olmayan (özel) API'sini kullanan [`instagrapi`](https://github.com/subzeroid/instagrapi) kütüphanesine dayanır. Bu tür araçlar Instagram'ın Kullanım Şartları'na aykırı olabilir ve hesabın geçici kısıtlanmasına ya da kapatılmasına yol açabilir. **Kullanım tamamen kendi sorumluluğundadır**; yazar hiçbir zarardan sorumlu tutulamaz. Yalnızca **kendi hesabında** kullan. *Instagram* adı ve logosu Meta Platforms, Inc.'in tescilli markasıdır; uygulama ikonu bu proje için sıfırdan çizilmiş bir çizimdir.
+This project is **unofficial** and has no connection to Instagram / Meta. It relies on the [`instagrapi`](https://github.com/subzeroid/instagrapi) library, which uses Instagram's unofficial private API. Tools like this may violate Instagram's Terms of Use and can lead to a temporary restriction or the closing of your account. **You use it entirely at your own risk**; the author cannot be held liable for any damage. Use it on **your own account** only. The *Instagram* name and logo are registered trademarks of Meta Platforms, Inc.; the app icon is an original drawing made for this project.
 
-Silme işlemleri (mesaj geri çekme, sohbet silme, story silme) **geri alınamaz**. Program bu yüzden yazılı onay ister.
+Deletions (unsending messages, deleting chats, deleting stories, removing likes/saves, unblocking) **cannot be undone**, which is why the app asks for a typed confirmation.
 
-## 👤 Yapımcı
+## 👤 Author
 
 <table>
 <tr><td>
@@ -189,31 +240,11 @@ Instagram: [**@on_r19**](https://instagram.com/on_r19)
 </td></tr>
 </table>
 
-## 🙏 Teşekkürler
+## 🙏 Thanks
 
 - [`instagrapi`](https://github.com/subzeroid/instagrapi) (MIT) · [`curl_cffi`](https://github.com/lexiforest/curl_cffi) (MIT) · [`pydantic`](https://github.com/pydantic/pydantic) (MIT)
-- Derleme: [PyInstaller](https://pyinstaller.org) · İkon çizimi: [Pillow](https://python-pillow.org)
+- Build: [PyInstaller](https://pyinstaller.org) · Icon drawing: [Pillow](https://python-pillow.org)
 
-## 📄 Lisans
+## 📄 License
 
 [MIT](LICENSE) © 2026 Onur Teryakioğlu
-
----
-
-<details>
-<summary><b>🇬🇧 English summary</b></summary>
-
-**Instagram DM Cleaner** is a Windows desktop tool (Python + Tkinter) that cleans up your own Instagram account slowly and safely, fully autonomously:
-
-- unsend your messages / delete whole conversations, or **auto-delete every chat except the newest N**;
-- delete **archived stories older than a chosen date**;
-- **unblock** all blocked accounts one by one;
-- remove **all your likes**.
-
-Every tool follows *scan → review the plan → confirm → runs by itself*. Double-click a row to protect it. Actions are paced like a human (random delays, periodic rests, three speed profiles); on Instagram warnings the app slows down, rests and resumes on its own, and stops immediately on serious ones. Network allow-list (only Instagram/Facebook hosts), DPAPI-encrypted session storage, no telemetry.
-
-Download `IGDMTool.exe` from [Releases](../../releases/latest) or run from source (`python src/igdm_launcher.py`). If password login fails with *"Your version of Instagram is out of date"*, use the browser-session (`sessionid`) login. 126 offline tests (`python tests/run_all.py`).
-
-**Disclaimer:** unofficial, not affiliated with Instagram/Meta, may violate its Terms of Service - use at your own risk, on your own account only. Deletions are irreversible.
-
-</details>

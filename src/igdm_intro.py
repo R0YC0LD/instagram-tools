@@ -13,7 +13,8 @@ import tkinter as tk
 
 from igdm_icon import logo_image
 from igdm_perf import frame_ms
-from igdm_meta import APP_TITLE, VERSION, AUTHOR, INSTAGRAM_HANDLE, REPO_URL
+from igdm_meta import VERSION, AUTHOR, INSTAGRAM_HANDLE, REPO_URL
+from igdm_i18n import tr, app_title
 
 TOP, BOTTOM = (5, 8, 20), (24, 30, 72)
 PAC = "#facc15"
@@ -34,23 +35,23 @@ def credit_items():
     """(kind, text, font, colour, gap_after_px) - the whole roll, top to bottom."""
     return [
         ("image", None, None, None, 26),
-        ("text", APP_TITLE, (FONT, 30, "bold"), WHITE, 6),
-        ("text", f"v{VERSION}  ·  Instagram için Pacman'li temizlik aracı", (FONT, 12), MUTED, 92),
+        ("text", app_title(), (FONT, 30, "bold"), WHITE, 6),
+        ("text", tr("v{0}  ·  Instagram için Pacman'li temizlik aracı", VERSION), (FONT, 12), MUTED, 92),
 
         ("text", "☪", ("Segoe UI Symbol", 34), RED, 6),
         ("text", spaced("Made in Türkiye"), (FONT, 20, "bold"), WHITE, 92),
 
-        ("text", spaced("Made by"), (FONT, 11), DIM, 10),
+        ("text", spaced(tr("Made by")), (FONT, 11), DIM, 10),
         ("text", AUTHOR, (FONT, 30, "bold"), PAC, 92),
 
         ("text", spaced("Instagram"), (FONT, 11), DIM, 10),
         ("text", f"@{INSTAGRAM_HANDLE}", (FONT, 26, "bold"), PINK, 92),
 
-        ("text", "Ücretsiz ve açık kaynak  ·  MIT Lisansı", (FONT, 12), MUTED, 8),
+        ("text", tr("Ücretsiz ve açık kaynak  ·  MIT Lisansı"), (FONT, 12), MUTED, 8),
         ("text", REPO_URL, (FONT, 12), "#a5b4fc", 92),
 
         ("text", "●   ●   ●", (FONT, 14), PAC, 14),
-        ("text", "Hesabını hafiflet. Pacman yesin.", (FONT, 13, "italic"), MUTED, 60),
+        ("text", tr("Hesabını hafiflet. Pacman yesin."), (FONT, 13, "italic"), MUTED, 60),
     ]
 
 
@@ -129,9 +130,9 @@ class Intro:
                                            justify="center", width=w - 80)
             x0, y0, x1, y1 = self.cv.bbox(item)
             y = y1 + gap
-        self.cv.create_text(24, h - 22, text="Atlamak için tıkla ya da bir tuşa bas", anchor="sw", fill=DIM,
+        self.cv.create_text(24, h - 22, text=tr("Atlamak için tıkla ya da bir tuşa bas"), anchor="sw", fill=DIM,
                             font=(FONT, 9), tags="ui")
-        self.cv.create_text(w - 24, h - 22, text="Geç  ›", anchor="se", fill=MUTED,
+        self.cv.create_text(w - 24, h - 22, text=tr("Geç  ›"), anchor="se", fill=MUTED,
                             font=(FONT, 11, "bold"), tags="ui")
 
     def _draw_pacman_strip(self, w, h):

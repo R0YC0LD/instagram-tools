@@ -29,24 +29,34 @@ from instagrapi.exceptions import (TwoFactorRequired, BadPassword, ChallengeRequ
 
 import igdm_ui as ui
 import igdm_perf as perf
-from igdm_common import (APP_TITLE, VERSION, ACCENT, ACCENT_DARK, DANGER, BG, CARD, TEXT, MUTED, PAC, SIDEBAR,
+from igdm_common import (VERSION, ACCENT, ACCENT_DARK, DANGER, BG, CARD, TEXT, MUTED, PAC, SIDEBAR,
                          SIDEBAR_HOVER, FONT, FONT_BOLD, SETTINGS_FILE, PROTECTED_FILE, KEEP_FILE,
                          LOG_FILE, PROFILES, DEFAULT_PROFILE, SOFT_PAUSE, MAX_SOFT_HITS, LONG_REST, MAX_LONG_RESTS,
                          StopRequested, Pacer, fmt_duration, load_json, save_json, limit_kind, is_limit_error,
-                         is_network_error, NET_BACKOFF, friendly, norm_word)
+                         is_network_error, NET_BACKOFF, friendly, norm_word, profile_label, profile_id)
 from igdm_bulk import StoryTab, BlockedTab, LikesTab, SavedTab
 from igdm_extra import BackupTab, AccountTab
 
 
 from igdm_items import ITEM_LABELS, item_id, item_text, item_label, item_time  # noqa: F401
+from igdm_i18n import tr, T, app_title, LANGS, CODES, NAMES, get_language, set_language
 
 
 
 
 
 class App:
-    def __init__(self, root):
+    def __init__(self, root, carry=None):
         self.root = root
+        self.q = queue.Queue()                           # UI callbacks posted by worker threads
+        self._log_q = queue.Queue()                      # log lines -> file, written off the UI thread
+        self._log_thread = None
+        self._poll_id = None
+        self._setup(carry)
+
+    def _setup(self, carry=None):
+        """Build (or, after a language change, rebuild) the whole window. `carry` keeps the login."""
+        root = self.root
         self.client = None
         self.my_username = None
         self.my_user_id = None
@@ -69,13 +79,10 @@ class App:
         self._status_lbl = None
         self.busy = False
         self.stop_event = threading.Event()
-        self.q = queue.Queue()
         self.frame_ms = perf.frame_ms()                  # one display frame: 16 ms @60 Hz, 6 ms @144 Hz
         self.poll_ms = max(4, self.frame_ms)             # UI-queue polling follows the display
-        self._log_q = queue.Queue()                      # log lines -> file, written off the UI thread
-        self._log_thread = None
 
-        root.title(f"{APP_TITLE} v{VERSION}")
+        root.title(f"{app_title()} v{VERSION}")
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         w, h = min(1340, sw - 40), min(860, sh - 90)
         if not getattr(root, "_igdm_sized", False):      # the launcher may already have sized the window
@@ -86,8 +93,13 @@ class App:
         root.report_callback_exception = self._tk_exception
 
         saved = load_json(SETTINGS_FILE, {})
+        if carry is None and saved.get("language") in CODES:
+            set_language(saved["language"])                # otherwise keep the language chosen by the launcher / tests
+        root.title(f"{app_title()} v{VERSION}")
         prof = saved.get("profile")
         self.var_profile = tk.StringVar(value=prof if prof in PROFILES else DEFAULT_PROFILE)
+        self.var_profile_disp = tk.StringVar(value=profile_label(self.var_profile.get()))
+        self.var_lang_disp = tk.StringVar(value=NAMES[get_language()])
         self.var_keep = tk.IntVar(value=int(saved.get("keep", 20)) if str(saved.get("keep", 20)).isdigit() else 20)
         self.var_keep_pins = tk.BooleanVar(value=bool(saved.get("keep_pins", True)))
         self.var_unsend_first = tk.BooleanVar(value=bool(saved.get("unsend_first", False)))
@@ -96,9 +108,54 @@ class App:
 
         self._style()
         self._build()
-        self.root.after(self.poll_ms, self._poll)
-        self.log("Program açıldı. Ağ kilidi aktif: yalnızca Instagram/Facebook sunucularına bağlanılır.")
-        self.try_saved_session()
+        self._poll_id = self.root.after(self.poll_ms, self._poll)
+        self.log(tr("Program açıldı. Ağ kilidi aktif: yalnızca Instagram/Facebook sunucularına bağlanılır."))
+        if carry and carry.get("client") is not None:
+            self._restore_login(carry)
+        else:
+            self.try_saved_session()
+
+    # ------------------------------------------------------------- language
+    def change_language(self, code):
+        """Switch the display language on the fly: the window is rebuilt, the login (and page) are kept."""
+        if code not in CODES or code == get_language():
+            return False
+        if self.busy:
+            ui.showinfo(app_title(), tr("Bir işlem sürerken dil değiştirilemez. Önce işlemi durdur."))
+            self.var_lang_disp.set(NAMES[get_language()])
+            return False
+        try:
+            page = self.nb.index(self.nb.select())
+        except tk.TclError:
+            page = 0
+        carry = {"client": self.client, "username": self.my_username, "uid": self.my_user_id, "page": page}
+        self.flush_log(1.0)
+        set_language(code)
+        self.save_settings()                              # (writes "language": code)
+        if self._poll_id is not None:
+            try:
+                self.root.after_cancel(self._poll_id)
+            except tk.TclError:
+                pass
+        for w in list(self.root.winfo_children()):
+            w.destroy()
+        self._setup(carry)
+        self.log(tr("Dil değiştirildi: {0}", NAMES[code]))
+        return True
+
+    def _restore_login(self, carry):
+        """After a rebuild: put the still-valid login back without touching the network."""
+        self.client, self.my_username, self.my_user_id = carry["client"], carry["username"], carry["uid"]
+        self.load_protected()
+        self.set_account(self.my_username)
+        self.lbl_login.configure(text=tr("Giriş başarılı: @{0}", self.my_username))
+        for i in (1, 2, 3):
+            self.nb.tab(i, state="normal")
+        for tab in self.bulk_tabs:
+            tab.load_protected()
+            tab.enable(True)
+        self.nb.select(carry.get("page", 1))
+        self.load_threads()
 
     # ------------------------------------------------------------------ UI
     def _style(self):
@@ -109,11 +166,11 @@ class App:
         kind = kind or ("danger" if danger else ("primary" if primary else "secondary"))
         return ui.FlatButton(parent, text, command, kind=kind)
 
-    NAV = [("HESAP", [(0, "Giriş", "●"), (9, "Hesap bilgisi", "☺")]),
-           ("DM ARAÇLARI", [(1, "Sohbet seç", "✉"), (2, "Mesajlar", "☰"), (3, "DM temizlik", "⌫"),
-                            (8, "Sohbet yedekle", "⇩")]),
-           ("TEMİZLİK ARAÇLARI", [(4, "Story arşivi", "▣"), (5, "Engeller", "⊘"), (6, "Beğeniler", "♥"),
-                                  (7, "Kaydedilenler", "⚑")])]
+    NAV = [(T("HESAP"), [(0, T("Giriş"), "●"), (9, T("Hesap bilgisi"), "☺")]),
+           (T("DM ARAÇLARI"), [(1, T("Sohbet seç"), "✉"), (2, T("Mesajlar"), "☰"), (3, T("DM temizlik"), "⌫"),
+                            (8, T("Sohbet yedekle"), "⇩")]),
+           (T("TEMİZLİK ARAÇLARI"), [(4, T("Story arşivi"), "▣"), (5, T("Engeller"), "⊘"), (6, T("Beğeniler"), "♥"),
+                                  (7, T("Kaydedilenler"), "⚑")])]
 
     def _build(self):
         ui.set_window_icon(self.root)
@@ -134,8 +191,8 @@ class App:
         for i in (1, 2, 3):
             self.nb.tab(i, state="disabled")
 
-        self.sidebar = ui.Sidebar(self.root, self.nb, self.NAV, self.logo, "DM Temizleyici",
-                                  f"Instagram · v{VERSION}")
+        nav = [(tr(section), [(idx, tr(label), glyph) for idx, label, glyph in items]) for section, items in self.NAV]
+        self.sidebar = ui.Sidebar(self.root, self.nb, nav, self.logo, app_title(), f"Instagram · v{VERSION}")
         self.sidebar.pack(side="left", fill="y")
         main.pack(side="left", fill="both", expand=True)
         self._build_sidebar_footer(self.sidebar.footer)
@@ -150,10 +207,23 @@ class App:
         self.sidebar.refresh()
 
     def _build_sidebar_footer(self, f):
-        tk.Label(f, text="HIZ PROFİLİ", fg="#64748b", bg=SIDEBAR, font=(FONT, 8, "bold"), anchor="w").pack(fill="x")
-        self.cmb_profile = ttk.Combobox(f, textvariable=self.var_profile, values=list(PROFILES), state="readonly")
-        self.cmb_profile.pack(fill="x", pady=(4, 14))
-        self.cmb_profile.bind("<<ComboboxSelected>>", lambda e: self.on_profile_change())
+        row = tk.Frame(f, bg=SIDEBAR)
+        row.pack(fill="x", pady=(0, 12))
+        row.columnconfigure(0, weight=1, uniform="cmb")
+        row.columnconfigure(1, weight=1, uniform="cmb")
+        tk.Label(row, text=tr("HIZ PROFİLİ"), fg="#64748b", bg=SIDEBAR, font=(FONT, 8, "bold"), anchor="w").grid(
+            row=0, column=0, sticky="w")
+        tk.Label(row, text=tr("DİL"), fg="#64748b", bg=SIDEBAR, font=(FONT, 8, "bold"), anchor="w").grid(
+            row=0, column=1, sticky="w", padx=(8, 0))
+        self.cmb_profile = ttk.Combobox(row, textvariable=self.var_profile_disp, state="readonly", width=8,
+                                        values=[profile_label(p) for p in PROFILES])
+        self.cmb_profile.grid(row=1, column=0, sticky="ew", pady=(4, 0))
+        self.cmb_profile.bind("<<ComboboxSelected>>", lambda e: self._profile_picked())
+        self.cmb_lang = ttk.Combobox(row, textvariable=self.var_lang_disp, state="readonly", width=8,
+                                     values=[name for _, name in LANGS])
+        self.cmb_lang.grid(row=1, column=1, sticky="ew", pady=(4, 0), padx=(8, 0))
+        self.cmb_lang.bind("<<ComboboxSelected>>", lambda e: self.change_language(
+            next((c for c, n in LANGS if n == self.var_lang_disp.get()), get_language())))
 
         chip = tk.Frame(f, bg=SIDEBAR_HOVER)
         chip.pack(fill="x", pady=(0, 10))
@@ -163,25 +233,25 @@ class App:
         self.avatar.pack(side="left", padx=10, pady=8)
         col = tk.Frame(chip, bg=SIDEBAR_HOVER)
         col.pack(side="left", fill="x", expand=True)
-        self.lbl_account = tk.Label(col, text="Giriş yapılmadı", fg="#94a3b8", bg=SIDEBAR_HOVER,
+        self.lbl_account = tk.Label(col, text=tr("Giriş yapılmadı"), fg="#94a3b8", bg=SIDEBAR_HOVER,
                                     font=(FONT, 10, "bold"), anchor="w")
         self.lbl_account.pack(fill="x")
-        self.lbl_account_sub = tk.Label(col, text="Bağlı değil", fg="#64748b", bg=SIDEBAR_HOVER,
+        self.lbl_account_sub = tk.Label(col, text=tr("Bağlı değil"), fg="#64748b", bg=SIDEBAR_HOVER,
                                         font=(FONT, 9), anchor="w")
         self.lbl_account_sub.pack(fill="x")
-        self.btn_logout = self.button(f, "Çıkış yap ve oturumu sil", self.logout, kind="ghost")
+        self.btn_logout = self.button(f, tr("Çıkış yap ve oturumu sil"), self.logout, kind="ghost")
         self.btn_logout.pack(fill="x")
 
     def set_account(self, username):
         """Update the account chip in the sidebar (username=None -> logged out)."""
         if username:
             self.lbl_account.configure(text=f"@{username}", fg="white")
-            self.lbl_account_sub.configure(text="● Bağlı", fg="#4ade80")
+            self.lbl_account_sub.configure(text=tr("● Bağlı"), fg="#4ade80")
             self.avatar.itemconfigure("bg", fill=PAC)
             self.avatar.itemconfigure("ch", text=username[:1].upper(), fill="#1f2937")
         else:
-            self.lbl_account.configure(text="Giriş yapılmadı", fg="#94a3b8")
-            self.lbl_account_sub.configure(text="Bağlı değil", fg="#64748b")
+            self.lbl_account.configure(text=tr("Giriş yapılmadı"), fg="#94a3b8")
+            self.lbl_account_sub.configure(text=tr("Bağlı değil"), fg="#64748b")
             self.avatar.itemconfigure("bg", fill="#475569")
             self.avatar.itemconfigure("ch", text="?", fill="white")
 
@@ -197,15 +267,15 @@ class App:
         head = tk.Frame(logf, bg=BG)
         head.pack(fill="x", pady=(0, 6))
         self.log_open = True
-        self.lbl_log_toggle = tk.Label(head, text="▾  Etkinlik günlüğü", bg=BG, fg=TEXT, cursor="hand2",
+        self.lbl_log_toggle = tk.Label(head, text=tr("▾  Etkinlik günlüğü"), bg=BG, fg=TEXT, cursor="hand2",
                                        font=(FONT, 10, "bold"))
         self.lbl_log_toggle.pack(side="left")
         self.lbl_log_toggle.bind("<Button-1>", lambda e: self.toggle_log())
-        for text, cmd in (("Günlük dosyasını aç", self.open_log_file), ("Temizle", self.clear_log)):
+        for text, cmd in ((tr("Günlük dosyasını aç"), self.open_log_file), (tr("Temizle"), self.clear_log)):
             link = tk.Label(head, text=text, fg=ACCENT, bg=BG, cursor="hand2", font=(FONT, 9, "underline"))
             link.pack(side="right", padx=(12, 0))
             link.bind("<Button-1>", lambda e, c=cmd: c())
-        ttk.Checkbutton(head, text="Uyarıda uzun mola verip kendiliğinden devam et", variable=self.var_autoresume,
+        ttk.Checkbutton(head, text=tr("Uyarıda uzun mola verip kendiliğinden devam et"), variable=self.var_autoresume,
                         command=self.save_settings, style="Bg.TCheckbutton").pack(side="right", padx=(0, 14))
         self.log_body = tk.Frame(logf, bg="#0b1220")
         self.log_body.pack(fill="x")
@@ -224,10 +294,10 @@ class App:
         self.log_open = not self.log_open
         if self.log_open:
             self.log_body.pack(fill="x")
-            self.lbl_log_toggle.configure(text="▾  Etkinlik günlüğü")
+            self.lbl_log_toggle.configure(text=tr("▾  Etkinlik günlüğü"))
         else:
             self.log_body.pack_forget()
-            self.lbl_log_toggle.configure(text="▸  Etkinlik günlüğü")
+            self.lbl_log_toggle.configure(text=tr("▸  Etkinlik günlüğü"))
 
     def clear_log(self):
         self.txt_log.configure(state="normal")
@@ -242,24 +312,24 @@ class App:
         # ---- left: password login
         L = ttk.Frame(f, style="Card.TFrame")
         L.grid(row=0, column=0, sticky="nw")
-        ttk.Label(L, text="A · Şifreyle giriş", style="H.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
-        ttk.Label(L, text="2 adımlı doğrulaman varsa kod soracağım.", style="Sub.TLabel").grid(
+        ttk.Label(L, text=tr("A · Şifreyle giriş"), style="H.TLabel").grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(L, text=tr("2 adımlı doğrulaman varsa kod soracağım."), style="Sub.TLabel").grid(
             row=1, column=0, columnspan=2, sticky="w", pady=(2, 8))
 
-        ttk.Label(L, text="Kullanıcı adı", style="Card.TLabel").grid(row=2, column=0, sticky="w")
+        ttk.Label(L, text=tr("Kullanıcı adı"), style="Card.TLabel").grid(row=2, column=0, sticky="w")
         self.var_user = tk.StringVar()
         self.ent_user = ttk.Entry(L, textvariable=self.var_user, width=30, font=("Segoe UI", 11))
         self.ent_user.grid(row=3, column=0, columnspan=2, sticky="w", pady=(2, 8))
 
-        ttk.Label(L, text="Şifre", style="Card.TLabel").grid(row=4, column=0, sticky="w")
+        ttk.Label(L, text=tr("Şifre"), style="Card.TLabel").grid(row=4, column=0, sticky="w")
         self.var_pass = tk.StringVar()
         self.ent_pass = ttk.Entry(L, textvariable=self.var_pass, width=30, font=("Segoe UI", 11))  # görünür
         self.ent_pass.grid(row=5, column=0, sticky="w", pady=(2, 4))
         self.var_hide = tk.BooleanVar(value=False)
-        ttk.Checkbutton(L, text="Gizle", variable=self.var_hide, command=self._toggle_pass).grid(
+        ttk.Checkbutton(L, text=tr("Gizle"), variable=self.var_hide, command=self._toggle_pass).grid(
             row=5, column=1, sticky="w", padx=8)
 
-        self.btn_login = self.button(L, "Şifreyle giriş yap", self.do_login)
+        self.btn_login = self.button(L, tr("Şifreyle giriş yap"), self.do_login)
         self.btn_login.grid(row=6, column=0, columnspan=2, sticky="w", pady=(14, 0))
 
         ttk.Separator(f, orient="vertical").grid(row=0, column=1, sticky="ns", padx=20)
@@ -267,25 +337,25 @@ class App:
         # ---- right: browser session login
         R = ttk.Frame(f, style="Card.TFrame")
         R.grid(row=0, column=2, sticky="nw")
-        ttk.Label(R, text="B · Tarayıcı oturumuyla giriş", style="H.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(R, text=tr("B · Tarayıcı oturumuyla giriş"), style="H.TLabel").grid(row=0, column=0, sticky="w")
         ttk.Label(R, style="Sub.TLabel", wraplength=400, justify="left",
-                  text="Şifreyle giriş 'sürüm eski' hatası verirse bunu kullan.").grid(row=1, column=0, sticky="w", pady=(2, 6))
+                  text=tr("Şifreyle giriş 'sürüm eski' hatası verirse bunu kullan.")).grid(row=1, column=0, sticky="w", pady=(2, 6))
         ttk.Label(R, style="Card.TLabel", wraplength=400, justify="left",
-                  text="1) Tarayıcıda instagram.com'a giriş yap.\n"
+                  text=tr("1) Tarayıcıda instagram.com'a giriş yap.\n"
                        "2) F12 → Application (Uygulama) → Cookies → instagram.com\n"
-                       "3) 'sessionid' değerini kopyalayıp aşağı yapıştır."
+                       "3) 'sessionid' değerini kopyalayıp aşağı yapıştır.")
                   ).grid(row=2, column=0, sticky="w")
         self.var_sid = tk.StringVar()
         self.ent_sid = ttk.Entry(R, textvariable=self.var_sid, width=44, show="•", font=("Segoe UI", 10))
         self.ent_sid.grid(row=3, column=0, sticky="w", pady=(10, 4))
         ttk.Label(R, style="Sub.TLabel", wraplength=380, justify="left",
-                  text="Bu değer şifre gibidir, kimseyle paylaşma.").grid(row=4, column=0, sticky="w")
-        self.btn_login_sid = self.button(R, "Oturumla giriş yap", self.do_login_session)
+                  text=tr("Bu değer şifre gibidir, kimseyle paylaşma.")).grid(row=4, column=0, sticky="w")
+        self.btn_login_sid = self.button(R, tr("Oturumla giriş yap"), self.do_login_session)
         self.btn_login_sid.grid(row=5, column=0, sticky="w", pady=(10, 0))
 
         # ---- shared
         self.var_remember = tk.BooleanVar(value=False)
-        ttk.Checkbutton(f, text="Bu bilgisayarda oturumu şifreli hatırla (bir sonraki açılışta tekrar giriş gerekmesin)",
+        ttk.Checkbutton(f, text=tr("Bu bilgisayarda oturumu şifreli hatırla (bir sonraki açılışta tekrar giriş gerekmesin)"),
                         variable=self.var_remember).grid(row=1, column=0, columnspan=3, sticky="w", pady=(10, 2))
         self.lbl_login = ttk.Label(f, text="", style="Card.TLabel", foreground="#444444", wraplength=820, justify="left")
         self.lbl_login.grid(row=2, column=0, columnspan=3, sticky="w")
@@ -299,9 +369,9 @@ class App:
         lock.create_oval(9, 15, 13, 19, fill="#eef2ff", outline="")
         lock.pack(side="left", padx=(14, 8), pady=6)
         tk.Label(note, bg="#eef2ff", fg="#3730a3", justify="left", wraplength=780, anchor="w", font=(FONT, 9),
-                 text="Gizlilik: şifren diske yazılmaz. Program yalnızca Instagram sunucularına bağlanır (başka "
+                 text=tr("Gizlilik: şifren diske yazılmaz. Program yalnızca Instagram sunucularına bağlanır (başka "
                       "adresler engellenir). Oturumu hatırlarsan yalnızca bu Windows hesabının açabileceği şekilde "
-                      "şifrelenir.").pack(side="left", fill="x", expand=True, pady=6, padx=(0, 14))
+                      "şifrelenir.")).pack(side="left", fill="x", expand=True, pady=6, padx=(0, 14))
         self.ent_pass.bind("<Return>", lambda e: self.do_login())
         self.ent_user.bind("<Return>", lambda e: self.ent_pass.focus())
         self.ent_sid.bind("<Return>", lambda e: self.do_login_session())
@@ -314,67 +384,67 @@ class App:
         f = self.tab_threads
         head = ttk.Frame(f, style="Card.TFrame")
         head.pack(fill="x")
-        ttk.Label(head, text="Mesajlarını temizlemek istediğin sohbeti seç", style="H.TLabel").pack(side="left")
-        self.btn_refresh = self.button(head, "Yenile", self.load_threads, primary=False)
+        ttk.Label(head, text=tr("Mesajlarını temizlemek istediğin sohbeti seç"), style="H.TLabel").pack(side="left")
+        self.btn_refresh = self.button(head, tr("Yenile"), self.load_threads, primary=False)
         self.btn_refresh.pack(side="right")
 
         fl = ttk.Frame(f, style="Card.TFrame")
         fl.pack(fill="x", pady=(10, 6))
-        ttk.Label(fl, text="Ara:", style="Card.TLabel").pack(side="left")
+        ttk.Label(fl, text=tr("Ara:"), style="Card.TLabel").pack(side="left")
         self.var_filter = tk.StringVar()
         self.var_filter.trace_add("write", lambda *a: self.render_threads())
         ttk.Entry(fl, textvariable=self.var_filter, width=30).pack(side="left", padx=8)
-        ttk.Label(fl, text="(kullanıcı adı veya mesaj metni)", style="Sub.TLabel").pack(side="left")
+        ttk.Label(fl, text=tr("(kullanıcı adı veya mesaj metni)"), style="Sub.TLabel").pack(side="left")
 
         cols = ("who", "last")
         self.tv_threads = ttk.Treeview(f, columns=cols, show="headings", selectmode="browse", height=6)
-        self.tv_threads.heading("who", text="Kişiler", anchor="w")
-        self.tv_threads.heading("last", text="Son mesaj", anchor="w")
+        self.tv_threads.heading("who", text=tr("Kişiler"), anchor="w")
+        self.tv_threads.heading("last", text=tr("Son mesaj"), anchor="w")
         self.tv_threads.column("who", width=260)
         self.tv_threads.column("last", width=520)
         sb = ttk.Scrollbar(f, orient="vertical", command=self.tv_threads.yview)
         self.tv_threads.configure(yscrollcommand=sb.set)
         self.tv_threads.pack(side="left", fill="both", expand=True)
         sb.pack(side="left", fill="y")
-        self.empty_hints.add(self.tv_threads, "Sohbetler burada listelenir.")
+        self.empty_hints.add(self.tv_threads, tr("Sohbetler burada listelenir."))
         self.tv_threads.bind("<Double-1>", lambda e: self.choose_thread())
 
         side = ttk.Frame(f, style="Card.TFrame")
         side.pack(side="left", fill="y", padx=(12, 0))
-        self.btn_choose = self.button(side, "Bu sohbeti seç  →", self.choose_thread)
+        self.btn_choose = self.button(side, tr("Bu sohbeti seç  →"), self.choose_thread)
         self.btn_choose.pack(fill="x")
-        self.btn_more = self.button(side, "Daha fazla yükle", self.load_more_threads, primary=False)
+        self.btn_more = self.button(side, tr("Daha fazla yükle"), self.load_more_threads, primary=False)
         self.btn_more.pack(fill="x", pady=(8, 0))
 
-    NO_CHAT_HINT = "Henüz sohbet seçilmedi.\nSağ üstteki 'Sohbet seç' düğmesiyle bir sohbet seç."
+    NO_CHAT_HINT = T("Henüz sohbet seçilmedi.\nSağ üstteki 'Sohbet seç' düğmesiyle bir sohbet seç.")
 
     def _build_msgs(self):
         f = self.tab_msgs
         head = ttk.Frame(f, style="Card.TFrame")
         head.pack(fill="x")
-        self.lbl_thread = ttk.Label(head, text="Sohbet: seçilmedi", style="H.TLabel")
+        self.lbl_thread = ttk.Label(head, text=tr("Sohbet: seçilmedi"), style="H.TLabel")
         self.lbl_thread.pack(side="left")
-        self.btn_del_thread = self.button(head, "Sohbeti komple sil", self.delete_thread, danger=True)
+        self.btn_del_thread = self.button(head, tr("Sohbeti komple sil"), self.delete_thread, danger=True)
         self.btn_del_thread.pack(side="right")
-        self.btn_pick = self.button(head, "Sohbet seç  →", lambda: self.nb.select(1), kind="secondary")
+        self.btn_pick = self.button(head, tr("Sohbet seç  →"), lambda: self.nb.select(1), kind="secondary")
         self.btn_pick.pack(side="right", padx=(0, 8))
 
         row = ttk.Frame(f, style="Card.TFrame")
         row.pack(fill="x", pady=(10, 4))
-        ttk.Label(row, text="Kelime(ler):", style="Card.TLabel").pack(side="left")
+        ttk.Label(row, text=tr("Kelime(ler):"), style="Card.TLabel").pack(side="left")
         self.var_kw = tk.StringVar()
         e = ttk.Entry(row, textvariable=self.var_kw, width=28)
         e.pack(side="left", padx=8)
         e.bind("<Return>", lambda ev: self.find_messages())
-        ttk.Label(row, text="En çok kaç mesaj:", style="Card.TLabel").pack(side="left", padx=(8, 0))
+        ttk.Label(row, text=tr("En çok kaç mesaj:"), style="Card.TLabel").pack(side="left", padx=(8, 0))
         self.var_max = tk.IntVar(value=500)
         ttk.Spinbox(row, from_=50, to=20000, increment=50, textvariable=self.var_max, width=7).pack(side="left", padx=6)
-        self.btn_find = self.button(row, "Yükle / Ara", self.find_messages)
+        self.btn_find = self.button(row, tr("Yükle / Ara"), self.find_messages)
         self.btn_find.pack(side="left", padx=(10, 0))
         ttk.Label(f, style="Sub.TLabel", wraplength=860, justify="left",
-                  text="Sohbeti seçince mesajlar otomatik yüklenir. Gri satırlar karşı tarafındır ve geri çekilemez. "
+                  text=tr("Sohbeti seçince mesajlar otomatik yüklenir. Gri satırlar karşı tarafındır ve geri çekilemez. "
                        "Kendi mesajlarını seçip geri çekebilir ya da 'Sohbeti komple sil' ile tüm sohbeti "
-                       "gelen kutundan kaldırabilirsin. Kelime yazarsan yalnızca eşleşenler listelenir."
+                       "gelen kutundan kaldırabilirsin. Kelime yazarsan yalnızca eşleşenler listelenir.")
                   ).pack(anchor="w", pady=(0, 8))
 
         # Bottom widgets are packed first (side="bottom") so the list can never push them out of view.
@@ -385,27 +455,27 @@ class App:
 
         bar = ttk.Frame(f, style="Card.TFrame")
         bar.pack(side="bottom", fill="x", pady=(10, 0))
-        self.btn_all = self.button(bar, "Benim mesajlarımı seç", self.select_all, primary=False)
+        self.btn_all = self.button(bar, tr("Benim mesajlarımı seç"), self.select_all, primary=False)
         self.btn_all.pack(side="left")
         self.lbl_count = ttk.Label(bar, text="", style="Card.TLabel")
         self.lbl_count.pack(side="left", padx=12)
-        self.btn_stop = self.button(bar, "Durdur", self.stop, primary=False)
+        self.btn_stop = self.button(bar, tr("Durdur"), self.stop, primary=False)
         self.btn_stop.pack(side="right")
-        self.btn_delete = self.button(bar, "Seçili mesajlarımı geri çek", self.delete_selected, danger=True)
+        self.btn_delete = self.button(bar, tr("Seçili mesajlarımı geri çek"), self.delete_selected, danger=True)
         self.btn_delete.pack(side="right", padx=8)
 
         mid = ttk.Frame(f, style="Card.TFrame")
         mid.pack(fill="both", expand=True)
         cols = ("time", "who", "text")
         self.tv_msgs = ttk.Treeview(mid, columns=cols, show="headings", selectmode="extended", height=5)
-        self.tv_msgs.heading("time", text="Tarih", anchor="w")
-        self.tv_msgs.heading("who", text="Gönderen", anchor="w")
-        self.tv_msgs.heading("text", text="Mesaj", anchor="w")
+        self.tv_msgs.heading("time", text=tr("Tarih"), anchor="w")
+        self.tv_msgs.heading("who", text=tr("Gönderen"), anchor="w")
+        self.tv_msgs.heading("text", text=tr("Mesaj"), anchor="w")
         self.tv_msgs.column("time", width=140, stretch=False)
         self.tv_msgs.column("who", width=130, stretch=False)
         self.tv_msgs.column("text", width=520)
         self.tv_msgs.tag_configure("other", foreground="#9ca3af")
-        self.hint_msgs = self.empty_hints.add(self.tv_msgs, self.NO_CHAT_HINT)
+        self.hint_msgs = self.empty_hints.add(self.tv_msgs, tr(self.NO_CHAT_HINT))
         sb = ttk.Scrollbar(mid, orient="vertical", command=self.tv_msgs.yview)
         self.tv_msgs.configure(yscrollcommand=sb.set)
         self.tv_msgs.pack(side="left", fill="both", expand=True)
@@ -416,7 +486,7 @@ class App:
     # -------------------------------------------------------------- plumbing
     def log(self, msg):
         stamp = datetime.now().strftime("%H:%M:%S")
-        low = msg.lower()
+        low = str(getattr(msg, "src", msg)).lower()          # keywords are Turkish: use the source text
         level = next((tag for tag, (_, words) in self.LOG_TAGS.items() if any(w in low for w in words)), None)
         self.txt_log.configure(state="normal")
         self.txt_log.insert("end", f"{stamp}  ", "time")
@@ -463,11 +533,11 @@ class App:
     def open_log_file(self):
         try:
             if not os.path.exists(LOG_FILE):
-                self.log("Günlük dosyası henüz oluşmadı.")
+                self.log(tr("Günlük dosyası henüz oluşmadı."))
                 return
             os.startfile(LOG_FILE)
         except OSError as e:
-            self.log(f"Günlük dosyası açılamadı: {e}")
+            self.log(tr("Günlük dosyası açılamadı: {0}", e))
 
     def save_settings(self):
         try:
@@ -476,7 +546,8 @@ class App:
             keep = 20
         data = load_json(SETTINGS_FILE, {})            # keep keys other tabs / versions wrote
         data.update({"profile": self.var_profile.get(), "keep": keep, "keep_pins": self.var_keep_pins.get(),
-                     "unsend_first": self.var_unsend_first.get(), "auto_resume": self.var_autoresume.get()})
+                     "unsend_first": self.var_unsend_first.get(), "auto_resume": self.var_autoresume.get(),
+                     "language": get_language()})
         for tab in self.bulk_tabs:
             if hasattr(tab, "settings"):
                 data.update(tab.settings())
@@ -498,19 +569,26 @@ class App:
         save_json(KEEP_FILE, data)
 
     # ---- speed profile helpers
-    NOUNS = {"unsend": "mesaj", "hide": "sohbet", "story": "story", "unblock": "kişi", "unlike": "beğeni",
-             "unsave": "kayıt", "download": "dosya"}
+    NOUNS = {"unsend": T("mesaj"), "hide": T("sohbet"), "story": T("story"), "unblock": T("kişi"), "unlike": T("beğeni"),
+             "unsave": T("kayıt"), "download": T("dosya")}
 
     def speed_text(self, kind):
         lo, hi = PROFILES[self.var_profile.get()][kind]
-        return f"Hız: {self.var_profile.get()} · her {self.NOUNS.get(kind, 'işlem')} arasında {lo}–{hi} sn"
+        return tr("Hız: {0} · her {1} arasında {2}–{3} sn", profile_label(self.var_profile.get()),
+                  tr(self.NOUNS.get(kind, T("işlem"))), lo, hi)
 
     def est(self, n, kind):
         return fmt_duration(Pacer.estimate(self.var_profile.get(), kind, n))
 
+    def _profile_picked(self):
+        """The combobox shows translated names; the setting itself stores the (Turkish) profile id."""
+        self.var_profile.set(profile_id(self.var_profile_disp.get()))
+        self.on_profile_change()
+
     def on_profile_change(self):
+        self.var_profile_disp.set(profile_label(self.var_profile.get()))
         self.save_settings()
-        self.log(f"Hız profili: {self.var_profile.get()}")
+        self.log(tr("Hız profili: {0}", profile_label(self.var_profile.get())))
         if not self.busy:
             self.lbl_prog.configure(text=self.speed_text("unsend"))
             if self.auto_threads:
@@ -542,14 +620,20 @@ class App:
         more = False
         try:
             while True:
-                self.q.get_nowait()()
+                fn = self.q.get_nowait()
+                try:
+                    fn()
+                except tk.TclError:
+                    pass                               # the widget was destroyed meanwhile (e.g. language switch)
+                except Exception as e:                 # noqa: BLE001 - one bad callback must never stop the loop
+                    self._tk_exception(type(e), e, e.__traceback__)
                 if time.perf_counter() - t0 > 0.006:
                     more = True
                     break
         except queue.Empty:
             pass
         try:
-            self.root.after(1 if more else self.poll_ms, self._poll)
+            self._poll_id = self.root.after(1 if more else self.poll_ms, self._poll)
         except tk.TclError:
             pass                                   # window already destroyed
 
@@ -560,6 +644,7 @@ class App:
                   self.btn_all, self.btn_delete, self.btn_del_thread, self.btn_plan, self.btn_protect):
             b.configure(state=st)
         self.cmb_profile.configure(state="disabled" if busy else "readonly")
+        self.cmb_lang.configure(state="disabled" if busy else "readonly")
         self.btn_stop.configure(state="normal" if busy else "disabled")
         self.btn_auto_stop.configure(state="normal" if busy else "disabled")
         self.btn_autorun.configure(state="disabled" if (busy or not self.auto_todo) else "normal")
@@ -580,7 +665,7 @@ class App:
         threading.Thread(target=runner, daemon=True).start()
 
     def _worker_crashed(self, e, tb):
-        self.log(f"Beklenmeyen hata: {friendly(e)}")
+        self.log(tr("Beklenmeyen hata: {0}", friendly(e)))
         self._write_log_file("TRACEBACK\n" + tb)
         for bar in [self.pb, self.pb_auto] + [t.pb for t in self.bulk_tabs]:
             try:
@@ -592,11 +677,11 @@ class App:
 
     def _tk_exception(self, exc, val, tb):
         """Errors inside Tk callbacks: log them instead of printing to a (missing) console."""
-        self.log(f"Beklenmeyen hata: {friendly(val)}")
+        self.log(tr("Beklenmeyen hata: {0}", friendly(val)))
         self._write_log_file("TRACEBACK\n" + "".join(traceback.format_exception(exc, val, tb)))
 
     def on_close(self):
-        if self.busy and not ui.askyesno(APP_TITLE, "Bir işlem sürüyor. Yine de kapatılsın mı?"):
+        if self.busy and not ui.askyesno(app_title(), tr("Bir işlem sürüyor. Yine de kapatılsın mı?")):
             return
         self.save_settings()
         self.flush_log(1.0)
@@ -604,7 +689,7 @@ class App:
 
     def stop(self):
         self.stop_event.set()
-        self.log("Durdurma isteği alındı...")
+        self.log(tr("Durdurma isteği alındı..."))
 
     # ---------------------------------------------------------------- login
     def new_client(self):
@@ -615,21 +700,21 @@ class App:
 
     def _challenge_code(self, username, choice):
         code = self.ask(lambda: ui.askstring(
-            APP_TITLE, f"Instagram doğrulama kodu istiyor ({choice}).\nGelen kodu yaz:", parent=self.root))
+            app_title(), tr("Instagram doğrulama kodu istiyor ({0}).\nGelen kodu yaz:", choice), parent=self.root))
         return (code or "").strip()
 
     def _new_password(self, username):
         pw = self.ask(lambda: ui.askstring(
-            APP_TITLE, "Instagram yeni bir şifre belirlemeni istiyor.\nYeni şifreyi yaz:", parent=self.root))
+            app_title(), tr("Instagram yeni bir şifre belirlemeni istiyor.\nYeni şifreyi yaz:"), parent=self.root))
         if not pw:
-            raise RuntimeError("Şifre değişikliği iptal edildi.")
+            raise RuntimeError(tr("Şifre değişikliği iptal edildi."))
         return pw
 
     def try_saved_session(self):
         import os
         if not os.path.exists(SESSION_FILE):
             return
-        self.lbl_login.configure(text="Kayıtlı oturum aranıyor...")
+        self.lbl_login.configure(text=tr("Kayıtlı oturum aranıyor..."))
         self.set_busy(True)
 
         def work():
@@ -639,11 +724,11 @@ class App:
                 info = client.account_info() if ok else None
             except Exception as e:
                 ok, info = False, None
-                self.post(lambda: self.log(f"Kayıtlı oturum kullanılamadı: {friendly(e)}"))
+                self.post(lambda: self.log(tr("Kayıtlı oturum kullanılamadı: {0}", friendly(e))))
             if ok and info:
                 self.post(lambda: self.login_done(client, info))
             else:
-                self.post(lambda: (self.set_busy(False), self.lbl_login.configure(text="Kayıtlı oturum geçersiz, yeniden giriş yap.")))
+                self.post(lambda: (self.set_busy(False), self.lbl_login.configure(text=tr("Kayıtlı oturum geçersiz, yeniden giriş yap."))))
 
         self.run_bg(work)
 
@@ -651,12 +736,12 @@ class App:
         username = self.var_user.get().strip().lstrip("@")
         password = self.var_pass.get().strip()
         if not username or not password:
-            ui.showwarning(APP_TITLE, "Kullanıcı adı ve şifreyi yaz.")
+            ui.showwarning(app_title(), tr("Kullanıcı adı ve şifreyi yaz."))
             return
         remember = self.var_remember.get()
         self.set_busy(True)
-        self.lbl_login.configure(text="Giriş yapılıyor...")
-        self.log(f"{username} için giriş deneniyor...")
+        self.lbl_login.configure(text=tr("Giriş yapılıyor..."))
+        self.log(tr("{0} için giriş deneniyor...", username))
 
         def work():
             client = self.new_client()
@@ -664,32 +749,32 @@ class App:
                 try:
                     client.login(username, password)
                 except TwoFactorRequired:
-                    self.post(lambda: self.lbl_login.configure(text="2 adımlı doğrulama kodu bekleniyor..."))
+                    self.post(lambda: self.lbl_login.configure(text=tr("2 adımlı doğrulama kodu bekleniyor...")))
                     for attempt in range(3):
                         code = self.ask(lambda: ui.askstring(
-                            "2 adımlı doğrulama",
-                            "Instagram 2 adımlı doğrulama kodunu istiyor.\n\n"
-                            "Doğrulama uygulamandaki 6 haneli kodu (veya SMS / yedek kodu) yaz:",
+                            tr("2 adımlı doğrulama"),
+                            tr("Instagram 2 adımlı doğrulama kodunu istiyor.\n\n"
+                            "Doğrulama uygulamandaki 6 haneli kodu (veya SMS / yedek kodu) yaz:"),
                             parent=self.root))
                         code = (code or "").replace(" ", "").strip()
                         if not code:
-                            raise RuntimeError("Doğrulama kodu girilmedi, giriş iptal edildi.")
+                            raise RuntimeError(tr("Doğrulama kodu girilmedi, giriş iptal edildi."))
                         try:
                             client.login(username, password, verification_code=code)
                             break
                         except Exception as e2:
                             if is_limit_error(e2) or attempt == 2:
                                 raise
-                            self.post(lambda: self.log("Kod kabul edilmedi, tekrar dene."))
+                            self.post(lambda: self.log(tr("Kod kabul edilmedi, tekrar dene.")))
                 info = client.account_info()
                 if remember:
                     saved = save_session(client, SESSION_FILE)
-                    self.post(lambda: self.log("Oturum şifreli kaydedildi." if saved else "Oturum kaydedilemedi."))
+                    self.post(lambda: self.log(tr("Oturum şifreli kaydedildi.") if saved else tr("Oturum kaydedilemedi.")))
                 self.post(lambda: self.login_done(client, info))
             except Exception as e:
                 msg = friendly(e)
-                self.post(lambda: (self.set_busy(False), self.lbl_login.configure(text=f"Giriş başarısız: {msg}"),
-                                   self.log(f"Giriş başarısız: {msg}")))
+                self.post(lambda: (self.set_busy(False), self.lbl_login.configure(text=tr("Giriş başarısız: {0}", msg)),
+                                   self.log(tr("Giriş başarısız: {0}", msg))))
 
         self.run_bg(work)
 
@@ -699,14 +784,14 @@ class App:
             sid = sid.split("=", 1)[1]
         sid = sid.replace("%3A", ":")  # browsers show ':' URL-encoded in cookie values
         if len(sid) < 30 or not sid[:1].isdigit():
-            ui.showwarning(
-                APP_TITLE, "Bu geçerli bir 'sessionid' değerine benzemiyor.\n"
-                           "Değer uzun bir metindir ve bir sayıyla başlar (örn. 1234567890%3Aabc...).")
+            ui.showwarning(app_title(), 
+                app_title(), tr("Bu geçerli bir 'sessionid' değerine benzemiyor.\n"
+                           "Değer uzun bir metindir ve bir sayıyla başlar (örn. 1234567890%3Aabc...)."))
             return
         remember = self.var_remember.get()
         self.set_busy(True)
-        self.lbl_login.configure(text="Tarayıcı oturumuyla giriş yapılıyor...")
-        self.log("Tarayıcı oturumuyla giriş deneniyor...")
+        self.lbl_login.configure(text=tr("Tarayıcı oturumuyla giriş yapılıyor..."))
+        self.log(tr("Tarayıcı oturumuyla giriş deneniyor..."))
 
         def work():
             client = self.new_client()
@@ -715,12 +800,12 @@ class App:
                 info = client.account_info()
                 if remember:
                     saved = save_session(client, SESSION_FILE)
-                    self.post(lambda: self.log("Oturum şifreli kaydedildi." if saved else "Oturum kaydedilemedi."))
+                    self.post(lambda: self.log(tr("Oturum şifreli kaydedildi.") if saved else tr("Oturum kaydedilemedi.")))
                 self.post(lambda: (self.var_sid.set(""), self.login_done(client, info)))
             except Exception as e:
                 msg = friendly(e)
-                self.post(lambda: (self.set_busy(False), self.lbl_login.configure(text=f"Giriş başarısız: {msg}"),
-                                   self.log(f"Oturumla giriş başarısız: {msg}")))
+                self.post(lambda: (self.set_busy(False), self.lbl_login.configure(text=tr("Giriş başarısız: {0}", msg)),
+                                   self.log(tr("Oturumla giriş başarısız: {0}", msg))))
 
         self.run_bg(work)
 
@@ -732,8 +817,8 @@ class App:
         self.var_pass.set("")
         self.set_busy(False)
         self.set_account(self.my_username)
-        self.lbl_login.configure(text=f"Giriş başarılı: @{self.my_username}")
-        self.log(f"Giriş başarılı: @{self.my_username}")
+        self.lbl_login.configure(text=tr("Giriş başarılı: @{0}", self.my_username))
+        self.log(tr("Giriş başarılı: @{0}", self.my_username))
         for i in (1, 2, 3):                 # every page is usable right after login
             self.nb.tab(i, state="normal")
         for tab in self.bulk_tabs:
@@ -744,7 +829,7 @@ class App:
 
     def logout(self):
         if self.busy:
-            ui.showinfo(APP_TITLE, "Önce süren işlemi durdur.")
+            ui.showinfo(app_title(), tr("Önce süren işlemi durdur."))
             return
         wiped = wipe_session(SESSION_FILE)
         self.client = None
@@ -753,8 +838,8 @@ class App:
         self.found = {}
         self.tv_threads.delete(*self.tv_threads.get_children())
         self.tv_msgs.delete(*self.tv_msgs.get_children())
-        self.lbl_thread.configure(text="Sohbet: seçilmedi")
-        self.hint_msgs.configure(text=self.NO_CHAT_HINT)
+        self.lbl_thread.configure(text=tr("Sohbet: seçilmedi"))
+        self.hint_msgs.configure(text=tr(self.NO_CHAT_HINT))
         self.set_account(None)
         self.lbl_login.configure(text="")
         self.auto_threads, self.auto_todo, self.protected = [], [], set()
@@ -766,7 +851,7 @@ class App:
             tab.reset()
             tab.enable(False)
         self.nb.select(0)
-        self.log("Çıkış yapıldı." + (" Kayıtlı oturum silindi." if wiped else ""))
+        self.log(tr("Çıkış yapıldı.") + (tr(" Kayıtlı oturum silindi.") if wiped else ""))
 
     # -------------------------------------------------------------- threads
     def _inbox(self, cursor=None):
@@ -783,14 +868,14 @@ class App:
 
     def load_more_threads(self):
         if not self.inbox_has_more:
-            ui.showinfo(APP_TITLE, "Başka sohbet yok.")
+            ui.showinfo(app_title(), tr("Başka sohbet yok."))
             return
         self.fetch_threads(reset=False)
 
     def fetch_threads(self, reset):
         self.set_busy(True)
         cursor = None if reset else self.inbox_cursor
-        self.log("Sohbetler yükleniyor...")
+        self.log(tr("Sohbetler yükleniyor..."))
 
         def work():
             try:
@@ -804,18 +889,18 @@ class App:
                     self.inbox_has_more, self.inbox_cursor = more, cur
                     self.render_threads()
                     self.set_busy(False)
-                    self.log(f"{len(self.threads)} sohbet listelendi.")
+                    self.log(tr("{0} sohbet listelendi.", len(self.threads)))
                 self.post(done)
             except Exception as e:
                 msg = friendly(e)
-                self.post(lambda: (self.set_busy(False), self.log(f"Sohbetler alınamadı: {msg}")))
+                self.post(lambda: (self.set_busy(False), self.log(tr("Sohbetler alınamadı: {0}", msg))))
 
         self.run_bg(work)
 
     @staticmethod
     def thread_title(t):
         names = [u.get("username") for u in t.get("users", []) if u.get("username")]
-        return t.get("thread_title") or ", ".join(names[:3]) or "Bilinmeyen"
+        return t.get("thread_title") or ", ".join(names[:3]) or tr("Bilinmeyen")
 
     @staticmethod
     def thread_last(t):
@@ -834,18 +919,18 @@ class App:
     def choose_thread(self):
         sel = self.tv_threads.selection()
         if not sel:
-            ui.showinfo(APP_TITLE, "Listeden bir sohbet seç.")
+            ui.showinfo(app_title(), tr("Listeden bir sohbet seç."))
             return
         self.thread_id = sel[0]
         self.thread_name = self.tv_threads.item(sel[0], "values")[0]
-        self.lbl_thread.configure(text=f"Sohbet: {self.thread_name}")
+        self.lbl_thread.configure(text=tr("Sohbet: {0}", self.thread_name))
         self.var_kw.set("")
         self.tv_msgs.delete(*self.tv_msgs.get_children())
         self.found = {}
         self.update_count()
         self.nb.tab(2, state="normal")
         self.nb.select(2)
-        self.log(f"Sohbet seçildi: {self.thread_name}")
+        self.log(tr("Sohbet seçildi: {0}", self.thread_name))
         self.find_messages()  # load the messages right away
 
     # ------------------------------------------------------------- messages
@@ -853,13 +938,13 @@ class App:
         """True (and a hint) when no chat is selected yet."""
         if self.thread_id:
             return False
-        self.lbl_prog.configure(text="Önce 'Sohbet seç' sayfasından (ya da sağ üstteki düğmeyle) bir sohbet seç.")
+        self.lbl_prog.configure(text=tr("Önce 'Sohbet seç' sayfasından (ya da sağ üstteki düğmeyle) bir sohbet seç."))
         return True
 
     def find_messages(self):
         if self.busy or self._need_chat():
             return
-        self.hint_msgs.configure(text="Bu sohbette (bu aramayla) mesaj bulunamadı.")
+        self.hint_msgs.configure(text=tr("Bu sohbette (bu aramayla) mesaj bulunamadı."))
         keywords = [k.strip().lower() for k in self.var_kw.get().split(",") if k.strip()]
         try:
             max_n = max(20, int(self.var_max.get()))
@@ -873,8 +958,8 @@ class App:
         self.update_count()
         self.pb.configure(mode="indeterminate")
         self.pb.start(12)
-        self.lbl_prog.configure(text="Mesajlar yükleniyor...")
-        self.log("Mesajlar yükleniyor" + (f" (kelime: {', '.join(keywords)})" if keywords else "") + "...")
+        self.lbl_prog.configure(text=tr("Mesajlar yükleniyor..."))
+        self.log(tr("Mesajlar yükleniyor") + (tr(" (kelime: {0})", ", ".join(keywords)) if keywords else "") + "...")
         thread_id = self.thread_id
 
         def work():
@@ -895,7 +980,7 @@ class App:
                         if scanned == 0:
                             keys = list(resp.keys()) if isinstance(resp, dict) else type(resp).__name__
                             self.post(lambda keys=keys: self.log(
-                                f"Instagram bu sohbetten mesaj döndürmedi (yanıt alanları: {keys})."))
+                                tr("Instagram bu sohbetten mesaj döndürmedi (yanıt alanları: {0}).", keys)))
                         break
                     rows = []
                     for it in items:
@@ -919,19 +1004,19 @@ class App:
             except Exception as e:
                 msg = friendly(e)
                 self.post(lambda: (self.pb.stop(), self.pb.configure(mode="determinate"), self.set_busy(False),
-                                   self.lbl_prog.configure(text=f"Yükleme hatası: {msg}"),
-                                   self.log(f"Mesajlar yüklenemedi: {msg}")))
+                                   self.lbl_prog.configure(text=tr("Yükleme hatası: {0}", msg)),
+                                   self.log(tr("Mesajlar yüklenemedi: {0}", msg))))
 
         self.run_bg(work)
 
     def add_rows(self, rows, users, scanned, own):
         for iid, it, mine in rows:
-            who = "Ben" if mine else (users.get(str(it.get("user_id"))) or f"ID {it.get('user_id')}")
+            who = tr("Ben") if mine else (users.get(str(it.get("user_id"))) or f"ID {it.get('user_id')}")
             self.tv_msgs.insert("", "end", iid=iid, values=(item_time(it), who, item_label(it)[:200]),
                                 tags=() if mine else ("other",))
             if mine:
                 self.found[iid] = it
-        self.lbl_prog.configure(text=f"Yüklenen mesaj: {scanned} · senin: {own}")
+        self.lbl_prog.configure(text=tr("Yüklenen mesaj: {0} · senin: {1}", scanned, own))
         self.update_count()
 
     def find_done(self, scanned, own, more_older):
@@ -940,9 +1025,9 @@ class App:
         self.set_busy(False)
         self.more_older = more_older
         self.select_all()
-        note = " Daha eski mesajlar da var: 'En çok kaç mesaj' değerini artırıp tekrar yükle." if more_older else ""
-        self.lbl_prog.configure(text=f"{scanned} mesaj yüklendi, {own} tanesi senin.{note}")
-        self.log(f"Yükleme bitti: {scanned} mesaj, senin: {own}, listelenen: {len(self.tv_msgs.get_children())}.{note}")
+        note = tr(" Daha eski mesajlar da var: 'En çok kaç mesaj' değerini artırıp tekrar yükle.") if more_older else ""
+        self.lbl_prog.configure(text=tr("{0} mesaj yüklendi, {1} tanesi senin.{2}", scanned, own, note))
+        self.log(tr("Yükleme bitti: {0} mesaj, senin: {1}, listelenen: {2}.{3}", scanned, own, len(self.tv_msgs.get_children()), note))
 
     def select_all(self):
         self.tv_msgs.selection_set([i for i in self.tv_msgs.get_children() if i in self.found])
@@ -952,7 +1037,7 @@ class App:
         total = len(self.tv_msgs.get_children())
         mine = len(self.found)
         sel = len([i for i in self.tv_msgs.selection() if i in self.found])
-        self.lbl_count.configure(text=f"{sel} seçili · {mine} benim · {total} listelenen")
+        self.lbl_count.configure(text=tr("{0} seçili · {1} benim · {2} listelenen", sel, mine, total))
 
     # -------------------------------------------------------------- deleting
     def delete_selected(self):
@@ -961,17 +1046,13 @@ class App:
         sel = [i for i in self.tv_msgs.selection() if i in self.found]
         skipped = len(self.tv_msgs.selection()) - len(sel)
         if not sel:
-            ui.showinfo(APP_TITLE, "Geri çekilecek kendi mesajın seçili değil.\n"
-                                           "(Karşı tarafın mesajları geri çekilemez.)")
+            ui.showinfo(app_title(), tr("Geri çekilecek kendi mesajın seçili değil.\n"
+                                           "(Karşı tarafın mesajları geri çekilemez.)"))
             return
-        extra = f"\n\n({skipped} seçili satır karşı tarafın olduğu için atlanacak.)" if skipped else ""
-        if not ui.askyesno(
-                APP_TITLE,
-                f"{len(sel)} mesajın geri çekilecek (herkes için silinir, geri alınamaz).\n\n"
-                f"{self.speed_text('unsend')}. Ara sıra kısa dinlenme molaları verilir; Instagram uyarı verirse "
-                f"program kendiliğinden yavaşlar ya da durur.\n"
-                f"Tahmini süre: yaklaşık {self.est(len(sel), 'unsend')}. Bu sürede bilgisayar uykuya geçmez, "
-                f"pencereyi açık bırak.{extra}\n\nDevam edilsin mi?"):
+        extra = tr("\n\n({0} seçili satır karşı tarafın olduğu için atlanacak.)", skipped) if skipped else ""
+        if not ui.askyesno(app_title(), 
+                app_title(),
+                tr("{0} mesajın geri çekilecek (herkes için silinir, geri alınamaz).\n\n{1}. Ara sıra kısa dinlenme molaları verilir; Instagram uyarı verirse program kendiliğinden yavaşlar ya da durur.\nTahmini süre: yaklaşık {2}. Bu sürede bilgisayar uykuya geçmez, pencereyi açık bırak.{3}\n\nDevam edilsin mi?", len(sel), self.speed_text('unsend'), self.est(len(sel), 'unsend'), extra)):
             return
         self.start_unsend(sel, then_hide=False)
 
@@ -981,7 +1062,7 @@ class App:
             return
         own_ids = list(self.found.keys())
         dlg = tk.Toplevel(self.root)
-        dlg.title("Sohbeti komple sil")
+        dlg.title(tr("Sohbeti komple sil"))
         dlg.configure(bg=CARD)
         dlg.transient(self.root)
         dlg.resizable(False, False)
@@ -989,22 +1070,21 @@ class App:
         result = {"go": False}
         var_unsend = tk.BooleanVar(value=False)
 
-        ttk.Label(dlg, text=f"“{self.thread_name}” sohbeti silinecek", style="H.TLabel").pack(
+        ttk.Label(dlg, text=tr("“{0}” sohbeti silinecek", self.thread_name), style="H.TLabel").pack(
             anchor="w", padx=20, pady=(18, 6))
         ttk.Label(dlg, style="Card.TLabel", wraplength=460, justify="left",
-                  text="Sohbet, Instagram'daki 'Sil' seçeneği gibi gelen kutundan kaldırılır. Bu yalnızca SENİN "
+                  text=tr("Sohbet, Instagram'daki 'Sil' seçeneği gibi gelen kutundan kaldırılır. Bu yalnızca SENİN "
                        "hesabındaki sohbeti siler; karşı tarafın mesajları ve senin gönderdiklerin onda kalmaya "
-                       "devam eder. Geri alınamaz.").pack(anchor="w", padx=20)
+                       "devam eder. Geri alınamaz.")).pack(anchor="w", padx=20)
         cb = ttk.Checkbutton(
             dlg, variable=var_unsend,
-            text=f"Silmeden önce yüklenen {len(own_ids)} mesajımı da geri çek (karşı taraftan da kaybolur; "
-                 f"yavaş: yaklaşık {self.est(len(own_ids), 'unsend')})")
+            text=tr("Silmeden önce yüklenen {0} mesajımı da geri çek (karşı taraftan da kaybolur; yavaş: yaklaşık {1})", len(own_ids), self.est(len(own_ids), 'unsend')))
         cb.pack(anchor="w", padx=20, pady=(14, 0))
         if not own_ids:
             cb.state(["disabled"])
         if self.more_older:
             ttk.Label(dlg, style="Sub.TLabel", wraplength=460, justify="left",
-                      text="Not: daha eski mesajların da var, yalnızca yüklenenler geri çekilir.").pack(
+                      text=tr("Not: daha eski mesajların da var, yalnızca yüklenenler geri çekilir.")).pack(
                 anchor="w", padx=20, pady=(4, 0))
 
         btns = ttk.Frame(dlg, style="Card.TFrame")
@@ -1014,8 +1094,8 @@ class App:
             result["go"] = True
             dlg.destroy()
 
-        self.button(btns, "Vazgeç", dlg.destroy, primary=False).pack(side="right")
-        self.button(btns, "Sohbeti sil", go, danger=True).pack(side="right", padx=8)
+        self.button(btns, tr("Vazgeç"), dlg.destroy, primary=False).pack(side="right")
+        self.button(btns, tr("Sohbeti sil"), go, danger=True).pack(side="right", padx=8)
         dlg.grab_set()
         dlg.update_idletasks()
         x = self.root.winfo_rootx() + (self.root.winfo_width() - dlg.winfo_width()) // 2
@@ -1054,7 +1134,7 @@ class App:
         """Wait the next human-like delay. label(left, rest) -> text. False if the user stopped."""
         secs, rest = self.pacer.delay(kind)
         if rest:
-            self.post(lambda: self.log(f"Kısa dinlenme molası ({fmt_duration(secs)}); Instagram'ı yormamak için."))
+            self.post(lambda: self.log(tr("Kısa dinlenme molası ({0}); Instagram'ı yormamak için.", fmt_duration(secs))))
         return self._wait(secs, lambda left: label(left, rest))
 
     def guarded(self, fn):
@@ -1070,8 +1150,8 @@ class App:
                         raise
                     wait, net_try = NET_BACKOFF[net_try], net_try + 1
                     self.post(lambda n=net_try, wait=wait: self.log(
-                        f"Bağlantı sorunu; {fmt_duration(wait)} sonra yeniden denenecek ({n}/{len(NET_BACKOFF)})."))
-                    if not self._wait(wait, lambda left: f"Bağlantı bekleniyor: {left} sn sonra yeniden denenecek..."):
+                        tr("Bağlantı sorunu; {0} sonra yeniden denenecek ({1}/{2}).", fmt_duration(wait), n, len(NET_BACKOFF))))
+                    if not self._wait(wait, lambda left: tr("Bağlantı bekleniyor: {0} sn sonra yeniden denenecek...", left)):
                         raise StopRequested()
                     continue
                 if limit_kind(e) != "soft":
@@ -1086,20 +1166,17 @@ class App:
                     self.pacer.slow_down()
                     rest, n = random.uniform(*LONG_REST), self.long_rests
                     self.post(lambda rest=rest, n=n: self.log(
-                        f"Instagram uyarıları sürüyor. Uzun mola: {fmt_duration(rest)} ({n}/{MAX_LONG_RESTS}); "
-                        "sonra daha yavaş, kendiliğinden devam edilecek."))
+                        tr("Instagram uyarıları sürüyor. Uzun mola: {0} ({1}/{2}); sonra daha yavaş, kendiliğinden devam edilecek.", fmt_duration(rest), n, MAX_LONG_RESTS)))
                     if not self._wait(rest, lambda left, n=n: (
-                            f"Uzun mola ({n}/{MAX_LONG_RESTS}): {fmt_duration(left)} sonra kendiliğinden devam edilecek...")):
+                            tr("Uzun mola ({0}/{1}): {2} sonra kendiliğinden devam edilecek...", n, MAX_LONG_RESTS, fmt_duration(left)))):
                         raise StopRequested()
                     continue
                 self.pacer.slow_down()
                 rest = random.uniform(*SOFT_PAUSE)
                 hits = self.soft_hits
                 self.post(lambda hits=hits, rest=rest: self.log(
-                    f"Instagram yavaşlama uyarısı verdi ({hits}/{MAX_SOFT_HITS - 1}). {fmt_duration(rest)} dinlenilecek, "
-                    "sonra daha yavaş devam edilecek."))
-                if not self._wait(rest, lambda left: f"Instagram uyarısı: dinleniyor, {left // 60}:{left % 60:02d} "
-                                                     "sonra devam edilecek..."):
+                    tr("Instagram yavaşlama uyarısı verdi ({0}/{1}). {2} dinlenilecek, sonra daha yavaş devam edilecek.", hits, (MAX_SOFT_HITS - 1), fmt_duration(rest))))
+                if not self._wait(rest, lambda left: tr("Instagram uyarısı: dinleniyor, {0}:{1:02d} sonra devam edilecek...", (left // 60), (left % 60))):
                     raise StopRequested()
 
     def start_unsend(self, iids, then_hide):
@@ -1131,10 +1208,10 @@ class App:
                     except Exception as e:
                         ok = False
                         msg = friendly(e)
-                        self.post(lambda msg=msg: self.log(f"Hata: {msg}"))
+                        self.post(lambda msg=msg: self.log(tr("Hata: {0}", msg)))
                         if is_limit_error(e):
-                            self.post(lambda: self.log("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
-                                                       "Birkaç saat bekle."))
+                            self.post(lambda: self.log(tr("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
+                                                       "Birkaç saat bekle.")))
                             failed += 1
                             limit_hit = True
                             break
@@ -1145,12 +1222,11 @@ class App:
                     else:
                         failed += 1
                     self.post(lambda n=n: (self.pb.configure(value=n), self.update_count()))
-                    self.post(lambda n=n, ok=ok: self.log(f"[{n}/{total}] {'geri çekildi' if ok else 'başarısız'}"))
+                    self.post(lambda n=n, ok=ok: self.log(f"[{n}/{total}] {tr('geri çekildi') if ok else tr('başarısız')}"))
                     if n < total and not self.stop_event.is_set():
                         left_est = fmt_duration(Pacer.estimate(profile, "unsend", total - n) * self.pacer.mult)
                         if not self.pace("unsend", lambda left, rest, n=n, le=left_est: (
-                                f"{n}/{total} işlendi · sonraki mesaj {left} sn sonra"
-                                f"{' (dinlenme molası)' if rest else ''} · kalan ≈ {le}")):
+                                tr("{0}/{1} işlendi · sonraki mesaj {2} sn sonra{3} · kalan ≈ {4}", n, total, left, (tr(' (dinlenme molası)') if rest else ''), le))):
                             break
                 if then_hide and not limit_hit and not self.stop_event.is_set():
                     if items:
@@ -1162,7 +1238,7 @@ class App:
                     except Exception as e:
                         hidden = False
                         msg = friendly(e)
-                        self.post(lambda msg=msg: self.log(f"Sohbet silinemedi: {msg}"))
+                        self.post(lambda msg=msg: self.log(tr("Sohbet silinemedi: {0}", msg)))
             finally:
                 try:
                     ctypes.windll.kernel32.SetThreadExecutionState(0x80000000)
@@ -1202,62 +1278,62 @@ class App:
     def delete_done(self, done, failed, stopped, hidden, then_hide, thread_id):
         self.set_busy(False)
         self.update_count()
-        summary = f"Geri çekilen: {done} · başarısız: {failed}"
+        summary = tr("Geri çekilen: {0} · başarısız: {1}", done, failed)
         if hidden:
-            self.log(f"Sohbet silindi: {self.thread_name}")
+            self.log(tr("Sohbet silindi: {0}", self.thread_name))
             self.threads = [t for t in self.threads if str(t.get("thread_id")) != str(thread_id)]
             self.render_threads()
             self.thread_id = None
             self.tv_msgs.delete(*self.tv_msgs.get_children())
             self.found = {}
-            self.lbl_thread.configure(text="Sohbet: seçilmedi")
-            self.hint_msgs.configure(text=self.NO_CHAT_HINT)
+            self.lbl_thread.configure(text=tr("Sohbet: seçilmedi"))
+            self.hint_msgs.configure(text=tr(self.NO_CHAT_HINT))
             self.nb.select(1)
-            self.lbl_prog.configure(text="Sohbet silindi.")
-            ui.showinfo(APP_TITLE, f"Sohbet silindi.\n\n{summary}" if done or failed else "Sohbet silindi.")
+            self.lbl_prog.configure(text=tr("Sohbet silindi."))
+            ui.showinfo(app_title(), tr("Sohbet silindi.\n\n{0}", summary) if done or failed else tr("Sohbet silindi."))
             return
-        self.lbl_prog.configure(text=f"Bitti · {summary}" + (" · (durduruldu)" if stopped else ""))
-        self.log(f"İşlem bitti. {summary}." + (" Kullanıcı durdurdu." if stopped else ""))
+        self.lbl_prog.configure(text=tr("Bitti · {0}", summary) + (tr(" · (durduruldu)") if stopped else ""))
+        self.log(tr("İşlem bitti. {0}.", summary) + (tr(" Kullanıcı durdurdu.") if stopped else ""))
         text = summary
         if then_hide and hidden is False:
-            text += "\n\nSohbet silinemedi (ayrıntı günlükte)."
+            text += tr("\n\nSohbet silinemedi (ayrıntı günlükte).")
         elif then_hide and (stopped or hidden is None):
-            text += "\n\nİşlem tamamlanmadığı için sohbet silinmedi."
+            text += tr("\n\nİşlem tamamlanmadığı için sohbet silinmedi.")
         if stopped:
-            text += "\n\nİşlem durduruldu; kalanlar listede duruyor."
-        ui.showinfo(APP_TITLE, text)
+            text += tr("\n\nİşlem durduruldu; kalanlar listede duruyor.")
+        ui.showinfo(app_title(), text)
 
 
     # ------------------------------------------------------ auto cleanup
     def _build_auto(self):
         f = self.tab_auto
-        ttk.Label(f, text="Otomatik temizlik: son sohbetler dışındakileri komple sil", style="H.TLabel").pack(anchor="w")
+        ttk.Label(f, text=tr("Otomatik temizlik: son sohbetler dışındakileri komple sil"), style="H.TLabel").pack(anchor="w")
         ttk.Label(f, style="Sub.TLabel", wraplength=860, justify="left",
-                  text="Gelen kutundaki tüm sohbetleri tarar, en son yazışılan N sohbeti korur, geri kalanını sırayla "
+                  text=tr("Gelen kutundaki tüm sohbetleri tarar, en son yazışılan N sohbeti korur, geri kalanını sırayla "
                        "gelen kutundan siler. Silinmesini istemediğin bir sohbete ÇİFT TIKLA: yeşil 'Korumalı' olur "
-                       "(tekrar çift tıklarsan kalkar; seçimin hatırlanır)."
+                       "(tekrar çift tıklarsan kalkar; seçimin hatırlanır).")
                   ).pack(anchor="w", pady=(2, 8))
 
         opts = ttk.Frame(f, style="Card.TFrame")
         opts.pack(fill="x")
-        ttk.Label(opts, text="Korunacak son sohbet sayısı:", style="Card.TLabel").pack(side="left")
+        ttk.Label(opts, text=tr("Korunacak son sohbet sayısı:"), style="Card.TLabel").pack(side="left")
         ttk.Spinbox(opts, from_=0, to=500, textvariable=self.var_keep, width=5, command=self.auto_settings_changed).pack(
             side="left", padx=6)
-        ttk.Checkbutton(opts, text="Sabitlenmiş sohbetleri koru", variable=self.var_keep_pins,
+        ttk.Checkbutton(opts, text=tr("Sabitlenmiş sohbetleri koru"), variable=self.var_keep_pins,
                         command=self.auto_settings_changed).pack(side="left", padx=12)
-        ttk.Label(opts, text="Ara:", style="Card.TLabel").pack(side="left", padx=(6, 0))
+        ttk.Label(opts, text=tr("Ara:"), style="Card.TLabel").pack(side="left", padx=(6, 0))
         ent = ttk.Entry(opts, textvariable=self.var_auto_filter, width=16)
         ent.pack(side="left", padx=4)
         self.var_auto_filter.trace_add("write", lambda *a: self.auto_render())
-        self.btn_plan = self.button(opts, "Sohbetleri tara ve planla", self.auto_scan)
+        self.btn_plan = self.button(opts, tr("Sohbetleri tara ve planla"), self.auto_scan)
         self.btn_plan.pack(side="right")
 
         ttk.Checkbutton(f, variable=self.var_unsend_first, command=self.save_settings,
-                        text="Silmeden önce her sohbette kendi mesajlarımı da geri çek (karşı taraftan da kaybolur; "
-                             "ÇOK yavaş)").pack(anchor="w", pady=(6, 8))
+                        text=tr("Silmeden önce her sohbette kendi mesajlarımı da geri çek (karşı taraftan da kaybolur; "
+                             "ÇOK yavaş)")).pack(anchor="w", pady=(6, 8))
 
         # Bottom widgets first so the list can never push them out of view.
-        self.lbl_auto = ttk.Label(f, text="Önce 'Sohbetleri tara ve planla' düğmesine bas.", style="Sub.TLabel")
+        self.lbl_auto = ttk.Label(f, text=tr("Önce 'Sohbetleri tara ve planla' düğmesine bas."), style="Sub.TLabel")
         self.lbl_auto.pack(side="bottom", anchor="w")
         self.pb_auto = ttk.Progressbar(f, mode="determinate")
         self.pb_auto.pack(side="bottom", fill="x", pady=(10, 2))
@@ -1265,20 +1341,20 @@ class App:
         bar.pack(side="bottom", fill="x", pady=(10, 0))
         self.lbl_plan = ttk.Label(bar, text="", style="Card.TLabel")
         self.lbl_plan.pack(side="left")
-        self.btn_auto_stop = self.button(bar, "Durdur", self.stop, primary=False)
+        self.btn_auto_stop = self.button(bar, tr("Durdur"), self.stop, primary=False)
         self.btn_auto_stop.pack(side="right")
-        self.btn_autorun = self.button(bar, "Otomatik temizliği başlat", self.auto_start, danger=True)
+        self.btn_autorun = self.button(bar, tr("Otomatik temizliği başlat"), self.auto_start, danger=True)
         self.btn_autorun.pack(side="right", padx=8)
-        self.btn_protect = self.button(bar, "Koru / korumayı kaldır", self.toggle_protect, primary=False)
+        self.btn_protect = self.button(bar, tr("Koru / korumayı kaldır"), self.toggle_protect, primary=False)
         self.btn_protect.pack(side="right")
 
         mid = ttk.Frame(f, style="Card.TFrame")
         mid.pack(fill="both", expand=True)
         self.tv_auto = ttk.Treeview(mid, columns=("status", "who", "last"), show="headings", selectmode="browse",
                                     height=5)
-        self.tv_auto.heading("status", text="Durum", anchor="w")
-        self.tv_auto.heading("who", text="Kişiler", anchor="w")
-        self.tv_auto.heading("last", text="Son etkinlik", anchor="w")
+        self.tv_auto.heading("status", text=tr("Durum"), anchor="w")
+        self.tv_auto.heading("who", text=tr("Kişiler"), anchor="w")
+        self.tv_auto.heading("last", text=tr("Son etkinlik"), anchor="w")
         self.tv_auto.column("status", width=130, stretch=False)
         self.tv_auto.column("who", width=360)
         self.tv_auto.column("last", width=150, stretch=False)
@@ -1286,7 +1362,7 @@ class App:
         self.tv_auto.tag_configure("prot", foreground="#166534", background="#dcfce7")
         self.tv_auto.tag_configure("del", foreground=TEXT)
         self.tv_auto.tag_configure("done", foreground="#9ca3af")
-        self.empty_hints.add(self.tv_auto, "Sohbetleri taramak için yukarıdaki düğmeye bas.\nSonra silinecekleri görürsün.")
+        self.empty_hints.add(self.tv_auto, tr("Sohbetleri taramak için yukarıdaki düğmeye bas.\nSonra silinecekleri görürsün."))
         self.tv_auto.tag_configure("err", foreground=DANGER)
         sb = ttk.Scrollbar(mid, orient="vertical", command=self.tv_auto.yview)
         self.tv_auto.configure(yscrollcommand=sb.set)
@@ -1326,16 +1402,16 @@ class App:
         if tid is None:
             sel = self.tv_auto.selection()
             if not sel:
-                self.lbl_auto.configure(text="Önce listeden bir sohbet seç (ya da çift tıkla).")
+                self.lbl_auto.configure(text=tr("Önce listeden bir sohbet seç (ya da çift tıkla)."))
                 return
             tid = sel[0]
         tid = str(tid)
         if tid in self.protected:
             self.protected.discard(tid)
-            self.log(f"Koruma kaldırıldı: {self._title_of(tid)}")
+            self.log(tr("Koruma kaldırıldı: {0}", self._title_of(tid)))
         else:
             self.protected.add(tid)
-            self.log(f"Korumaya alındı: {self._title_of(tid)}")
+            self.log(tr("Korumaya alındı: {0}", self._title_of(tid)))
         self.save_protected()
         self.auto_render(select=tid)
 
@@ -1360,8 +1436,8 @@ class App:
         self.tv_auto.delete(*self.tv_auto.get_children())
         self.pb_auto.configure(mode="indeterminate")
         self.pb_auto.start(12)
-        self.lbl_auto.configure(text="Tüm sohbetler taranıyor...")
-        self.log("Otomatik temizlik: tüm sohbetler taranıyor...")
+        self.lbl_auto.configure(text=tr("Tüm sohbetler taranıyor..."))
+        self.log(tr("Otomatik temizlik: tüm sohbetler taranıyor..."))
 
         def work():
             found, seen, cursor = [], set(), None
@@ -1373,7 +1449,7 @@ class App:
                         if tid not in seen:
                             seen.add(tid)
                             found.append(t)
-                    self.post(lambda n=len(found): self.lbl_auto.configure(text=f"Taranan sohbet: {n}"))
+                    self.post(lambda n=len(found): self.lbl_auto.configure(text=tr("Taranan sohbet: {0}", n)))
                     cursor = inbox.get("oldest_cursor")
                     if not inbox.get("has_older") or not cursor:
                         break
@@ -1384,8 +1460,8 @@ class App:
             except Exception as e:
                 msg = friendly(e)
                 self.post(lambda: (self.pb_auto.stop(), self.pb_auto.configure(mode="determinate"),
-                                   self.set_busy(False), self.lbl_auto.configure(text=f"Tarama hatası: {msg}"),
-                                   self.log(f"Sohbetler taranamadı: {msg}")))
+                                   self.set_busy(False), self.lbl_auto.configure(text=tr("Tarama hatası: {0}", msg)),
+                                   self.log(tr("Sohbetler taranamadı: {0}", msg))))
 
         self.begin_run(self.lbl_auto)
         self.run_bg(work)
@@ -1399,9 +1475,9 @@ class App:
         self.set_busy(False)
         if stopped:
             self.auto_threads = []
-            self.lbl_auto.configure(text="Tarama durduruldu.")
+            self.lbl_auto.configure(text=tr("Tarama durduruldu."))
             return
-        self.log(f"{len(found)} sohbet bulundu.")
+        self.log(tr("{0} sohbet bulundu.", len(found)))
         self.auto_render()
 
     def auto_plan(self):
@@ -1441,11 +1517,11 @@ class App:
                 continue
             why = reason.get(tid)
             if why == "manual":
-                status, tag = "Korumalı ★", "prot"
+                status, tag = tr("Korumalı ★"), "prot"
             elif why:
-                status, tag = "Korunacak", "keep"
+                status, tag = tr("Korunacak"), "keep"
             else:
-                status, tag = "Silinecek", "del"
+                status, tag = tr("Silinecek"), "del"
             self.tv_auto.insert("", "end", iid=tid, tags=(tag,), values=(status, title, self.thread_time(t)))
         self.tv_auto.yview_moveto(pos)
         if select and self.tv_auto.exists(select):
@@ -1453,12 +1529,12 @@ class App:
             self.tv_auto.see(select)
         self.auto_todo = todo
         manual = sum(1 for v in reason.values() if v == "manual")
-        self.lbl_plan.configure(text=f"{len(keep)} korunacak ({manual} elle korumalı) · {len(todo)} silinecek")
+        self.lbl_plan.configure(text=tr("{0} korunacak ({1} elle korumalı) · {2} silinecek", len(keep), manual, len(todo)))
         if todo:
-            self.lbl_auto.configure(text=f"Tahmini süre: yaklaşık {self.est(len(todo), 'hide')} · {self.speed_text('hide')}")
+            self.lbl_auto.configure(text=tr("Tahmini süre: yaklaşık {0} · {1}", self.est(len(todo), 'hide'), self.speed_text('hide')))
         else:
-            self.lbl_auto.configure(text="Silinecek sohbet yok." if self.auto_threads else
-                                    "Önce 'Sohbetleri tara ve planla' düğmesine bas.")
+            self.lbl_auto.configure(text=tr("Silinecek sohbet yok.") if self.auto_threads else
+                                    tr("Önce 'Sohbetleri tara ve planla' düğmesine bas."))
         self.btn_autorun.configure(state="normal" if todo else "disabled")
 
     def auto_start(self):
@@ -1466,20 +1542,15 @@ class App:
         if not todo or self.busy:
             return
         unsend_first = self.var_unsend_first.get()
-        extra = ("\n\nKendi mesajların da geri çekileceği için bu ÇOK daha uzun sürer (saatler / günler)."
+        extra = (tr("\n\nKendi mesajların da geri çekileceği için bu ÇOK daha uzun sürer (saatler / günler).")
                  if unsend_first else "")
         answer = ui.askstring(
-            "Onay gerekli",
-            f"{len(todo)} sohbet komple silinecek, {len(keep)} sohbet korunacak.\n"
-            f"Tahmini süre (yalnızca silme): yaklaşık {self.est(len(todo), 'hide')} ({self.var_profile.get()} hız).{extra}\n\n"
-            "Bu işlem geri alınamaz. Silinen sohbetler gelen kutundan kalkar (karşı taraf kendi tarafında görmeye "
-            "devam eder).\nİşlem sürerken bilgisayar uykuya geçmez; pencereyi açık bırak. Instagram uyarı verirse "
-            "program kendiliğinden yavaşlar ya da durur.\n\n"
-            "Onaylamak için  SİL  yaz:", parent=self.root)
-        # Turkish-safe compare: SİL / Sil / sil / SIL / sıl all count ("İ".lower() would leave a stray dot).
-        typed = (answer or "").strip().replace("İ", "i").replace("I", "i").replace("ı", "i").lower()
-        if typed != "sil":
-            self.log("Otomatik temizlik onaylanmadı, iptal edildi.")
+            tr("Onay gerekli"),
+            tr("{0} sohbet komple silinecek, {1} sohbet korunacak.\nTahmini süre (yalnızca silme): yaklaşık {2} ({3} hız).{4}\n\nBu işlem geri alınamaz. Silinen sohbetler gelen kutundan kalkar (karşı taraf kendi tarafında görmeye devam eder).\nİşlem sürerken bilgisayar uykuya geçmez; pencereyi açık bırak. Instagram uyarı verirse program kendiliğinden yavaşlar ya da durur.\n\nOnaylamak için  {5}  yaz:", len(todo), len(keep), self.est(len(todo), 'hide'),
+                profile_label(self.var_profile.get()), extra, tr("SİL")), parent=self.root)
+        # Turkish-safe compare (SİL / Sil / sil / SIL / sıl; or the translated word, e.g. DELETE)
+        if norm_word(answer) not in {norm_word("SİL"), norm_word(tr("SİL"))}:
+            self.log(tr("Otomatik temizlik onaylanmadı, iptal edildi."))
             return
         self.save_settings()
         self.auto_run(list(todo), unsend_first)
@@ -1516,7 +1587,7 @@ class App:
         total = len(todo)
         self.pb_auto.configure(maximum=total, value=0)
         profile = self.begin_run(self.lbl_auto)   # Tk variables are read on the UI thread only
-        self.log(f"Otomatik temizlik başladı ({self.var_profile.get()} hız): {total} sohbet silinecek.")
+        self.log(tr("Otomatik temizlik başladı ({0} hız): {1} sohbet silinecek.", self.var_profile.get(), total))
 
         def mark(tid, status, tag):
             if self.tv_auto.exists(tid):
@@ -1542,13 +1613,13 @@ class App:
                     if tid in self.protected:      # safety net: never delete a protected chat
                         continue
                     self.post(lambda n=n, name=name, tid=tid: (
-                        self.lbl_auto.configure(text=f"{n}/{total} · {name} siliniyor..."),
+                        self.lbl_auto.configure(text=tr("{0}/{1} · {2} siliniyor...", n, total, name)),
                         self.tv_auto.see(tid) if self.tv_auto.exists(tid) else None))
                     ok = False
                     try:
                         if unsend_first:
                             ids = self.fetch_own_ids(tid)
-                            self.post(lambda name=name, k=len(ids): self.log(f"{name}: {k} mesaj geri çekilecek."))
+                            self.post(lambda name=name, k=len(ids): self.log(tr("{0}: {1} mesaj geri çekilecek.", name, k)))
                             for k, mid in enumerate(ids, 1):
                                 if self.stop_event.is_set():
                                     break
@@ -1560,8 +1631,7 @@ class App:
                                     if is_limit_error(e):
                                         raise
                                 if k < len(ids) and not self.pace("unsend", lambda left, rest, name=name, k=k, m=len(ids), n=n: (
-                                        f"{n}/{total} · {name}: mesaj {k}/{m} işlendi · sonraki {left} sn sonra"
-                                        f"{' (dinlenme molası)' if rest else ''}")):
+                                        tr("{0}/{1} · {2}: mesaj {3}/{4} işlendi · sonraki {5} sn sonra{6}", n, total, name, k, m, left, (tr(' (dinlenme molası)') if rest else '')))):
                                     break
                             if self.stop_event.is_set():
                                 break
@@ -1570,28 +1640,27 @@ class App:
                         break
                     except Exception as e:
                         msg = friendly(e)
-                        self.post(lambda name=name, msg=msg: self.log(f"Hata ({name}): {msg}"))
+                        self.post(lambda name=name, msg=msg: self.log(tr("Hata ({0}): {1}", name, msg)))
                         if is_limit_error(e):
                             limit_hit = True
                             failed += 1
-                            self.post(lambda tid=tid: mark(tid, "Hata", "err"))
-                            self.post(lambda: self.log("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
-                                                       "Birkaç saat sonra tekrar başlat."))
+                            self.post(lambda tid=tid: mark(tid, tr("Hata"), "err"))
+                            self.post(lambda: self.log(tr("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
+                                                       "Birkaç saat sonra tekrar başlat.")))
                             break
                     if ok:
                         deleted += 1
                         removed.append(tid)
-                        self.post(lambda tid=tid: mark(tid, "Silindi", "done"))
-                        self.post(lambda n=n, name=name: self.log(f"[{n}/{total}] silindi: {name}"))
+                        self.post(lambda tid=tid: mark(tid, tr("Silindi"), "done"))
+                        self.post(lambda n=n, name=name: self.log(tr("[{0}/{1}] silindi: {2}", n, total, name)))
                     else:
                         failed += 1
-                        self.post(lambda tid=tid: mark(tid, "Hata", "err"))
-                        self.post(lambda n=n, name=name: self.log(f"[{n}/{total}] silinemedi: {name}"))
+                        self.post(lambda tid=tid: mark(tid, tr("Hata"), "err"))
+                        self.post(lambda n=n, name=name: self.log(tr("[{0}/{1}] silinemedi: {2}", n, total, name)))
                     self.post(lambda n=n: self.pb_auto.configure(value=n))
                     if n < total and not self.stop_event.is_set():
                         if not self.pace("hide", lambda left, rest, n=n, e=eta(n): (
-                                f"{n}/{total} işlendi · sonraki sohbet {left} sn sonra"
-                                f"{' (dinlenme molası)' if rest else ''} · kalan ≈ {e}")):
+                                tr("{0}/{1} işlendi · sonraki sohbet {2} sn sonra{3} · kalan ≈ {4}", n, total, left, (tr(' (dinlenme molası)') if rest else ''), e))):
                             break
             finally:
                 try:
@@ -1613,15 +1682,15 @@ class App:
         self.auto_todo = todo
         self.btn_autorun.configure(state="normal" if todo else "disabled")
         remaining = total - deleted - failed
-        summary = f"Silinen sohbet: {deleted} · başarısız: {failed}" + (f" · kalan: {remaining}" if remaining > 0 else "")
-        self.lbl_auto.configure(text=f"Bitti · {summary}" + (" · (durduruldu)" if stopped else ""))
-        self.log(f"Otomatik temizlik bitti. {summary}." + (" Kullanıcı durdurdu." if stopped else ""))
+        summary = tr("Silinen sohbet: {0} · başarısız: {1}", deleted, failed) + (tr(" · kalan: {0}", remaining) if remaining > 0 else "")
+        self.lbl_auto.configure(text=tr("Bitti · {0}", summary) + (tr(" · (durduruldu)") if stopped else ""))
+        self.log(tr("Otomatik temizlik bitti. {0}.", summary) + (tr(" Kullanıcı durdurdu.") if stopped else ""))
         text = summary
         if limit_hit:
-            text += "\n\nInstagram sınırlama uyardığı için durduruldu. Birkaç saat sonra tekrar başlatabilirsin."
+            text += tr("\n\nInstagram sınırlama uyardığı için durduruldu. Birkaç saat sonra tekrar başlatabilirsin.")
         elif stopped or remaining > 0:
-            text += "\n\nİşlem tamamlanmadı. 'Sohbetleri tara ve planla' ile yeniden tarayıp devam edebilirsin."
-        ui.showinfo(APP_TITLE, text)
+            text += tr("\n\nİşlem tamamlanmadı. 'Sohbetleri tara ve planla' ile yeniden tarayıp devam edebilirsin.")
+        ui.showinfo(app_title(), text)
 
 
 def main():

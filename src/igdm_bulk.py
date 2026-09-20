@@ -20,31 +20,38 @@ from datetime import datetime, timedelta
 from tkinter import ttk
 
 import igdm_ui as ui
-from igdm_common import (APP_TITLE, DANGER, ACCENT, SUCCESS, TEXT, StopRequested, Pacer, fmt_duration, friendly, is_limit_error,
+from igdm_common import (DANGER, ACCENT, SUCCESS, TEXT, StopRequested, Pacer, fmt_duration, friendly, is_limit_error,
                          norm_word)
+from igdm_i18n import tr, T, app_title
 
 
 class BulkTab:
     # ---- to be overridden -------------------------------------------------------------------------
     key = "bulk"                    # persistence key / log prefix
-    nb_title = "Araç"
+    nb_title = T("Araç")
     heading = ""
     blurb = ""
     kind = "unlike"                 # pacing kind (see igdm_common.PROFILES)
     columns = ()                    # ((id, heading, width), ...) after the status column
-    act_label = "İşlenecek"
-    keep_label = "Kalacak"
-    done_label = "Tamam"
-    confirm_word = "ONAY"
-    scan_text = "Tara ve planla"
-    start_text = "Başlat"
-    empty_text = "Henüz tarama yapılmadı.\nYukarıdaki düğmeyle listeyi oluştur."
+    act_label = T("İşlenecek")
+    keep_label = T("Kalacak")
+    done_label = T("Tamam")
+    confirm_word = T("ONAY")
+    scan_text = T("Tara ve planla")
+    start_text = T("Başlat")
+    empty_text = T("Henüz tarama yapılmadı.\nYukarıdaki düğmeyle listeyi oluştur.")
     persist = False                 # remember protected entries per account (keep.json)
     pace_between_items = True       # False when perform() paces internally
     fine_progress = False           # True when perform() reports progress itself via add_progress()
 
     def __init__(self, app):
         self.app = app
+        cls = type(self)            # the class constants hold Turkish source keys; translate them for this instance
+        for attr in ("nb_title", "heading", "blurb", "act_label", "keep_label", "done_label", "confirm_word",
+                     "scan_text", "start_text", "empty_text", "scanned_label"):
+            if hasattr(cls, attr):
+                setattr(self, attr, tr(getattr(cls, attr)))
+        self.columns = tuple((cid, tr(head), width) for cid, head, width in cls.columns)
         self.frame = ttk.Frame(app.nb, style="Page.TFrame", padding=20)
         self.items = []             # every scanned entry: {"id", "cols", "search", ...}
         self.todo = []
@@ -74,7 +81,7 @@ class BulkTab:
         return 1
 
     def confirm_text(self, n_act, n_keep):
-        return f"{n_act} kayıt işlenecek, {n_keep} kayıt korunacak."
+        return tr("{0} kayıt işlenecek, {1} kayıt korunacak.", n_act, n_keep)
 
     def item_title(self, item):
         return str(item["cols"][0])
@@ -93,11 +100,11 @@ class BulkTab:
         self.var_filter = tk.StringVar()
         ent = ttk.Entry(opts, textvariable=self.var_filter, width=16)
         ent.pack(side="right", padx=(0, 10))
-        ttk.Label(opts, text="Ara:", style="Card.TLabel").pack(side="right", padx=(0, 4))
+        ttk.Label(opts, text=tr("Ara:"), style="Card.TLabel").pack(side="right", padx=(0, 4))
         self.var_filter.trace_add("write", lambda *a: self.render())
 
         # Bottom widgets first so the list can never push them out of view.
-        self.lbl_status = ttk.Label(f, text="Önce tara düğmesine bas.", style="Sub.TLabel")
+        self.lbl_status = ttk.Label(f, text=tr("Önce tara düğmesine bas."), style="Sub.TLabel")
         self.lbl_status.pack(side="bottom", anchor="w")
         self.pb = ttk.Progressbar(f, mode="determinate")
         self.pb.pack(side="bottom", fill="x", pady=(10, 2))
@@ -105,18 +112,18 @@ class BulkTab:
         bar.pack(side="bottom", fill="x", pady=(10, 0))
         self.lbl_plan = ttk.Label(bar, text="", style="Card.TLabel")
         self.lbl_plan.pack(side="left")
-        self.btn_stop = app.button(bar, "Durdur", app.stop, primary=False)
+        self.btn_stop = app.button(bar, tr("Durdur"), app.stop, primary=False)
         self.btn_stop.pack(side="right")
         self.btn_start = app.button(bar, self.start_text, self.start, danger=True)
         self.btn_start.pack(side="right", padx=8)
-        self.btn_protect = app.button(bar, "Koru / korumayı kaldır", self.toggle_protect, primary=False)
+        self.btn_protect = app.button(bar, tr("Koru / korumayı kaldır"), self.toggle_protect, primary=False)
         self.btn_protect.pack(side="right")
 
         mid = ttk.Frame(f, style="Card.TFrame")
         mid.pack(fill="both", expand=True)
         cols = ("status",) + tuple(c[0] for c in self.columns)
         self.tv = ttk.Treeview(mid, columns=cols, show="headings", selectmode="browse", height=5)
-        self.tv.heading("status", text="Durum", anchor="w")
+        self.tv.heading("status", text=tr("Durum"), anchor="w")
         self.tv.column("status", width=150, stretch=False)
         for cid, head, width in self.columns:
             self.tv.heading(cid, text=head, anchor="w")
@@ -151,7 +158,7 @@ class BulkTab:
         self.items, self.todo, self.protected = [], [], set()
         self.tv.delete(*self.tv.get_children())
         self.lbl_plan.configure(text="")
-        self.lbl_status.configure(text="Önce tara düğmesine bas.")
+        self.lbl_status.configure(text=tr("Önce tara düğmesine bas."))
         self.btn_start.configure(state="disabled")
 
     def load_protected(self):
@@ -172,8 +179,8 @@ class BulkTab:
         self.tv.delete(*self.tv.get_children())
         self.pb.configure(mode="indeterminate")
         self.pb.start(12)
-        self.lbl_status.configure(text="Taranıyor...")
-        app.log(f"{self.nb_title}: tarama başladı.")
+        self.lbl_status.configure(text=tr("Taranıyor..."))
+        app.log(tr("{0}: tarama başladı.", self.nb_title))
         app.begin_run(self.lbl_status)
 
         def work():
@@ -185,8 +192,8 @@ class BulkTab:
             except Exception as e:
                 msg = friendly(e)
                 self.app.post(lambda: (self.pb.stop(), self.pb.configure(mode="determinate"), app.set_busy(False),
-                                       self.lbl_status.configure(text=f"Tarama hatası: {msg}"),
-                                       app.log(f"{self.nb_title}: tarama hatası: {msg}")))
+                                       self.lbl_status.configure(text=tr("Tarama hatası: {0}", msg)),
+                                       app.log(tr("{0}: tarama hatası: {1}", self.nb_title, msg))))
 
         app.run_bg(work)
 
@@ -196,9 +203,9 @@ class BulkTab:
         self.items = [] if stopped else found
         self.app.set_busy(False)
         if stopped:
-            self.lbl_status.configure(text="Tarama durduruldu.")
+            self.lbl_status.configure(text=tr("Tarama durduruldu."))
             return
-        self.app.log(f"{self.nb_title}: {len(found)} kayıt bulundu.")
+        self.app.log(tr("{0}: {1} kayıt bulundu.", self.nb_title, len(found)))
         self.render()
 
     def plan(self):
@@ -217,7 +224,7 @@ class BulkTab:
                 continue
             iid = it["id"]
             if iid in self.protected:
-                status, tag = "Korumalı ★", "prot"
+                status, tag = tr("Korumalı ★"), "prot"
             elif iid in act_ids:
                 status, tag = self.act_label, "act"
             else:
@@ -229,12 +236,11 @@ class BulkTab:
             self.tv.see(select)
         n_keep = len(self.items) - len(self.todo)
         units = sum(self.weight(it) for it in self.todo)
-        self.lbl_plan.configure(text=f"{len(self.todo)} işlenecek · {n_keep} korunacak/kalacak")
+        self.lbl_plan.configure(text=tr("{0} işlenecek · {1} korunacak/kalacak", len(self.todo), n_keep))
         if self.todo:
-            self.lbl_status.configure(text=f"Tahmini süre: yaklaşık {self.app.est(units, self.kind)} · "
-                                           f"{self.app.speed_text(self.kind)}")
+            self.lbl_status.configure(text=tr("Tahmini süre: yaklaşık {0} · {1}", self.app.est(units, self.kind), self.app.speed_text(self.kind)))
         else:
-            self.lbl_status.configure(text="İşlenecek kayıt yok." if self.items else "Önce tara düğmesine bas.")
+            self.lbl_status.configure(text=tr("İşlenecek kayıt yok.") if self.items else tr("Önce tara düğmesine bas."))
         self.btn_start.configure(state="normal" if self.todo else "disabled")
 
     # ---- protection (double click) ------------------------------------------------------------
@@ -250,7 +256,7 @@ class BulkTab:
         if iid is None:
             sel = self.tv.selection()
             if not sel:
-                self.lbl_status.configure(text="Önce listeden bir kayıt seç (ya da çift tıkla).")
+                self.lbl_status.configure(text=tr("Önce listeden bir kayıt seç (ya da çift tıkla)."))
                 return
             iid = sel[0]
         iid = str(iid)
@@ -269,14 +275,10 @@ class BulkTab:
         n_keep = len(self.items) - len(self.todo)
         units = sum(self.weight(it) for it in self.todo)
         answer = ui.askstring(
-            "Onay gerekli",
-            f"{self.confirm_text(len(self.todo), n_keep)}\n\n"
-            f"Tahmini süre: yaklaşık {self.app.est(units, self.kind)} ({self.app.var_profile.get()} hız). "
-            "İşlem yavaş ve kendiliğinden ilerler; bilgisayar uykuya geçmez, pencereyi açık bırak. "
-            "Instagram uyarı verirse program kendiliğinden yavaşlar, dinlenir ya da durur.\n\n"
-            f"Onaylamak için  {self.confirm_word}  yaz:", parent=self.app.root)
-        if norm_word(answer) != norm_word(self.confirm_word):
-            self.app.log(f"{self.nb_title}: onaylanmadı, iptal edildi.")
+            tr("Onay gerekli"),
+            tr("{0}\n\nTahmini süre: yaklaşık {1} ({2} hız). İşlem yavaş ve kendiliğinden ilerler; bilgisayar uykuya geçmez, pencereyi açık bırak. Instagram uyarı verirse program kendiliğinden yavaşlar, dinlenir ya da durur.\n\nOnaylamak için  {3}  yaz:", self.confirm_text(len(self.todo), n_keep), self.app.est(units, self.kind), self.app.var_profile.get(), self.confirm_word), parent=self.app.root)
+        if norm_word(answer) not in {norm_word(self.confirm_word), norm_word(type(self).confirm_word)}:   # translated or source word
+            self.app.log(tr("{0}: onaylanmadı, iptal edildi.", self.nb_title))
             return
         self.app.save_settings()
         self.run(list(self.todo))
@@ -301,7 +303,7 @@ class BulkTab:
         self.pb.configure(maximum=max(units_total, 1), value=0)
         profile = app.begin_run(self.lbl_status)     # Tk variables are read on the UI thread only
         kind = self.kind
-        app.log(f"{self.nb_title}: otomatik işlem başladı ({profile} hız): {total} kayıt.")
+        app.log(tr("{0}: otomatik işlem başladı ({1} hız): {2} kayıt.", self.nb_title, profile, total))
 
         def work():
             try:
@@ -319,7 +321,7 @@ class BulkTab:
                     iid, title, w = it["id"], self.item_title(it), self.weight(it)
                     if iid in self.protected:          # safety net
                         continue
-                    self.status(f"{n}/{total} · {title} işleniyor...")
+                    self.status(tr("{0}/{1} · {2} işleniyor...", n, total, title))
                     app.post(lambda iid=iid: self.tv.see(iid) if self.tv.exists(iid) else None)
                     ok = False
                     try:
@@ -328,13 +330,13 @@ class BulkTab:
                         break
                     except Exception as e:
                         msg = friendly(e)
-                        app.post(lambda title=title, msg=msg: app.log(f"Hata ({title}): {msg}"))
+                        app.post(lambda title=title, msg=msg: app.log(tr("Hata ({0}): {1}", title, msg)))
                         if is_limit_error(e):
                             limit_hit = True
                             failed += 1
-                            app.post(lambda iid=iid: self.mark(iid, "Hata", "err"))
-                            app.post(lambda: app.log("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
-                                                     "Birkaç saat sonra tekrar başlat."))
+                            app.post(lambda iid=iid: self.mark(iid, tr("Hata"), "err"))
+                            app.post(lambda: app.log(tr("Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. "
+                                                     "Birkaç saat sonra tekrar başlat.")))
                             break
                     if ok:
                         ok_n += 1
@@ -342,17 +344,16 @@ class BulkTab:
                         app.post(lambda iid=iid: self.mark(iid, self.done_label, "done"))
                     else:
                         failed += 1
-                        app.post(lambda iid=iid: self.mark(iid, "Hata", "err"))
+                        app.post(lambda iid=iid: self.mark(iid, tr("Hata"), "err"))
                     remaining_units -= w
                     if not self.fine_progress:
                         self.add_progress(w)
                     app.post(lambda n=n, title=title, ok=ok: app.log(
-                        f"[{n}/{total}] {'tamam' if ok else 'başarısız'}: {title}"))
+                        f"[{n}/{total}] {'tamam' if ok else tr('başarısız')}: {title}"))
                     if self.pace_between_items and n < total and not app.stop_event.is_set():
                         eta = fmt_duration(Pacer.estimate(profile, kind, max(remaining_units, 0)) * app.pacer.mult)
                         if not app.pace(kind, lambda left, rest, n=n, eta=eta: (
-                                f"{n}/{total} işlendi · sonraki {left} sn sonra"
-                                f"{' (dinlenme molası)' if rest else ''} · kalan ≈ {eta}")):
+                                tr("{0}/{1} işlendi · sonraki {2} sn sonra{3} · kalan ≈ {4}", n, total, left, (tr(' (dinlenme molası)') if rest else ''), eta))):
                             break
             finally:
                 try:
@@ -369,16 +370,16 @@ class BulkTab:
         self.app.set_busy(False)
         self.todo = self.plan()
         remaining = total - ok_n - failed
-        summary = f"Başarılı: {ok_n} · başarısız: {failed}" + (f" · kalan: {remaining}" if remaining > 0 else "")
-        self.lbl_status.configure(text=f"Bitti · {summary}" + (" · (durduruldu)" if stopped else ""))
+        summary = tr("Başarılı: {0} · başarısız: {1}", ok_n, failed) + (tr(" · kalan: {0}", remaining) if remaining > 0 else "")
+        self.lbl_status.configure(text=tr("Bitti · {0}", summary) + (tr(" · (durduruldu)") if stopped else ""))
         self.btn_start.configure(state="normal" if self.todo else "disabled")
-        self.app.log(f"{self.nb_title}: bitti. {summary}." + (" Kullanıcı durdurdu." if stopped else ""))
+        self.app.log(tr("{0}: bitti. {1}.", self.nb_title, summary) + (tr(" Kullanıcı durdurdu.") if stopped else ""))
         text = summary
         if limit_hit:
-            text += "\n\nInstagram sınırlama uyardığı için durduruldu. Birkaç saat sonra tekrar başlatabilirsin."
+            text += tr("\n\nInstagram sınırlama uyardığı için durduruldu. Birkaç saat sonra tekrar başlatabilirsin.")
         elif stopped or remaining > 0:
-            text += "\n\nİşlem tamamlanmadı. Yeniden tarayıp kaldığın yerden devam edebilirsin."
-        ui.showinfo(APP_TITLE, text)
+            text += tr("\n\nİşlem tamamlanmadı. Yeniden tarayıp kaldığın yerden devam edebilirsin.")
+        ui.showinfo(app_title(), text)
 
 
 # ======================================================================================= stories
@@ -398,34 +399,34 @@ def parse_date(text):
 
 class StoryTab(BulkTab):
     key = "stories"
-    nb_title = "Story arşivi"
-    heading = "Arşivlenmiş story temizleyici"
-    blurb = ("Belirlediğin tarihten ÖNCEKİ arşivlenmiş storyleri kalıcı olarak siler. Arşivi tarar, gün gün listeler; "
-             "silinmesini istemediğin bir güne ÇİFT TIKLA (yeşil 'Korumalı' olur). Silinen story geri getirilemez.")
+    nb_title = T("Story arşivi")
+    heading = T("Arşivlenmiş story temizleyici")
+    blurb = (T("Belirlediğin tarihten ÖNCEKİ arşivlenmiş storyleri kalıcı olarak siler. Arşivi tarar, gün gün listeler; "
+             "silinmesini istemediğin bir güne ÇİFT TIKLA (yeşil 'Korumalı' olur). Silinen story geri getirilemez."))
     kind = "story"
-    columns = (("date", "Gün", 200), ("count", "Story sayısı", 120))
-    act_label = "Silinecek"
-    keep_label = "Kalacak"
-    done_label = "Silindi"
-    confirm_word = "SİL"
-    scan_text = "Arşivi tara ve planla"
-    start_text = "Eski storyleri sil"
+    columns = (("date", T("Gün"), 200), ("count", T("Story sayısı"), 120))
+    act_label = T("Silinecek")
+    keep_label = T("Kalacak")
+    done_label = T("Silindi")
+    confirm_word = T("SİL")
+    scan_text = T("Arşivi tara ve planla")
+    start_text = T("Eski storyleri sil")
     pace_between_items = False      # perform() paces between the individual stories
     fine_progress = True
 
     def build_options(self, opts):
-        ttk.Label(opts, text="Şu tarihten önce (GG.AA.YYYY):", style="Card.TLabel").pack(side="left")
+        ttk.Label(opts, text=tr("Şu tarihten önce (GG.AA.YYYY):"), style="Card.TLabel").pack(side="left")
         self.var_date = tk.StringVar(value=(datetime.now() - timedelta(days=30)).strftime("%d.%m.%Y"))
         ent = ttk.Entry(opts, textvariable=self.var_date, width=11)
         ent.pack(side="left", padx=6)
         ent.bind("<Return>", lambda e: self.render())
         ent.bind("<FocusOut>", lambda e: self.render())
-        for label, days in (("1 ay", 30), ("6 ay", 182), ("1 yıl", 365)):
-            b = tk.Label(opts, text=label + " önce", fg=ACCENT, bg="white", cursor="hand2",
+        for label, days in ((tr("1 ay"), 30), (tr("6 ay"), 182), (tr("1 yıl"), 365)):
+            b = tk.Label(opts, text=label + tr(" önce"), fg=ACCENT, bg="white", cursor="hand2",
                          font=("Segoe UI", 9, "underline"))
             b.pack(side="left", padx=4)
             b.bind("<Button-1>", lambda e, d=days: self.set_days(d))
-        ttk.Label(opts, text="(GG.AA.YYYY)", style="Sub.TLabel").pack(side="left", padx=4)
+        ttk.Label(opts, text=tr("(GG.AA.YYYY)"), style="Sub.TLabel").pack(side="left", padx=4)
 
     def set_days(self, days):
         self.var_date.set((datetime.now() - timedelta(days=days)).strftime("%d.%m.%Y"))
@@ -441,15 +442,14 @@ class StoryTab(BulkTab):
     def render(self, select=None):
         super().render(select)
         if not self.app.busy and self.items and self.cutoff() is None:
-            self.lbl_status.configure(text="Tarih geçersiz. GG.AA.YYYY biçiminde yaz (örn. 01.03.2025).")
+            self.lbl_status.configure(text=tr("Tarih geçersiz. GG.AA.YYYY biçiminde yaz (örn. 01.03.2025)."))
 
     def weight(self, item):
         return max(1, int(item.get("count") or 1))
 
     def confirm_text(self, n_act, n_keep):
         units = sum(self.weight(it) for it in self.todo)
-        return (f"{self.cutoff():%d.%m.%Y} tarihinden önceki {n_act} güne ait yaklaşık {units} arşivlenmiş story "
-                f"KALICI olarak silinecek ({n_keep} gün kalacak). Bu işlem geri alınamaz.")
+        return (tr("{0:%d.%m.%Y} tarihinden önceki {1} güne ait yaklaşık {2} arşivlenmiş story KALICI olarak silinecek ({3} gün kalacak). Bu işlem geri alınamaz.", self.cutoff(), n_act, units, n_keep))
 
     def scan_items(self):
         client, app = self.app.client, self.app
@@ -467,7 +467,7 @@ class StoryTab(BulkTab):
                 days.append({"id": str(d.id), "ts": ts, "count": d.media_count,
                              "cols": (ts.strftime("%d.%m.%Y"), d.media_count),
                              "search": ts.strftime("%d.%m.%Y")})
-            self.status(f"Taranan gün: {len(days)}")
+            self.status(tr("Taranan gün: {0}", len(days)))
             if not nxt or nxt == cursor or not page:
                 break
             cursor = nxt
@@ -476,7 +476,7 @@ class StoryTab(BulkTab):
         return days
 
     def item_title(self, item):
-        return f"{item['cols'][0]} ({item.get('count', '?')} story)"
+        return tr("{0} ({1} story)", item["cols"][0], item.get("count", "?"))
 
     def perform(self, day):
         app, client = self.app, self.app.client
@@ -502,8 +502,7 @@ class StoryTab(BulkTab):
                 okay = False
             if k < len(pks) and not app.pace(
                     "story", lambda left, rest, k=k, m=len(pks), t=day["cols"][0]: (
-                        f"{t}: story {k}/{m} işlendi · sonraki {left} sn sonra"
-                        f"{' (dinlenme molası)' if rest else ''}")):
+                        tr("{0}: story {1}/{2} işlendi · sonraki {3} sn sonra{4}", t, k, m, left, (tr(' (dinlenme molası)') if rest else '')))):
                 raise StopRequested()
         return okay
 
@@ -524,24 +523,23 @@ class StoryTab(BulkTab):
 # ======================================================================================== blocked
 class BlockedTab(BulkTab):
     key = "blocked"
-    nb_title = "Engeller"
-    heading = "Engellenen hesapların engelini otomatik kaldır"
-    blurb = ("Engellediğin tüm hesapları listeler ve engellerini tek tek, yavaşça kaldırır. Engelli KALMASINI istediğin "
+    nb_title = T("Engeller")
+    heading = T("Engellenen hesapların engelini otomatik kaldır")
+    blurb = (T("Engellediğin tüm hesapları listeler ve engellerini tek tek, yavaşça kaldırır. Engelli KALMASINI istediğin "
              "kişiye ÇİFT TIKLA: yeşil 'Korumalı' olur ve bu seçim hatırlanır. Engeli kalkan kişi profilini yeniden "
-             "görebilir ve seni takip etmeyi deneyebilir.")
+             "görebilir ve seni takip etmeyi deneyebilir."))
     kind = "unblock"
-    columns = (("user", "Kullanıcı adı", 200), ("name", "Ad", 220), ("when", "Engellendiği tarih", 150))
-    act_label = "Engeli kalkacak"
-    keep_label = "Engelli kalacak"
-    done_label = "Engeli kalktı"
-    confirm_word = "KALDIR"
-    scan_text = "Engelleri tara ve planla"
-    start_text = "Engelleri kaldır"
+    columns = (("user", T("Kullanıcı adı"), 200), ("name", T("Ad"), 220), ("when", T("Engellendiği tarih"), 150))
+    act_label = T("Engeli kalkacak")
+    keep_label = T("Engelli kalacak")
+    done_label = T("Engeli kalktı")
+    confirm_word = T("KALDIR")
+    scan_text = T("Engelleri tara ve planla")
+    start_text = T("Engelleri kaldır")
     persist = True
 
     def confirm_text(self, n_act, n_keep):
-        return (f"{n_act} hesabın engeli kaldırılacak, {n_keep} hesap engelli kalacak. "
-                "Engellediğin kişiler (taciz eden ya da istemediğin hesaplar dahil) seni yeniden görebilecek.")
+        return (tr("{0} hesabın engeli kaldırılacak, {1} hesap engelli kalacak. Engellediğin kişiler (taciz eden ya da istemediğin hesaplar dahil) seni yeniden görebilecek.", n_act, n_keep))
 
     def scan_items(self):
         client, app = self.app.client, self.app
@@ -562,7 +560,7 @@ class BlockedTab(BulkTab):
                 uname = u.get("username") or uid
                 found.append({"id": uid, "cols": (uname, u.get("full_name") or "", when),
                               "search": f"{uname} {u.get('full_name') or ''}"})
-            self.status(f"Taranan engelli hesap: {len(found)}")
+            self.status(tr("Taranan engelli hesap: {0}", len(found)))
             nxt = res.get("next_max_id") or ""
             if not page or not nxt or nxt == cursor:
                 break
@@ -578,15 +576,15 @@ class BlockedTab(BulkTab):
 
 
 # ========================================================================================== likes / saved
-_MEDIA_TYPES = {1: "Fotoğraf", 2: "Video", 8: "Albüm"}
+_MEDIA_TYPES = {1: T("Fotoğraf"), 2: T("Video"), 8: T("Albüm")}
 
 
 class MediaListTab(BulkTab):
     """Posts/reels listed by a paged feed endpoint; the action removes the like / the save."""
     endpoint = "feed/liked/"
-    columns = (("owner", "Hesap", 150), ("type", "Tür", 100), ("date", "Gönderi tarihi", 150),
-               ("text", "Açıklama", 300))
-    scanned_label = "Taranan kayıt"
+    columns = (("owner", T("Hesap"), 150), ("type", T("Tür"), 100), ("date", T("Gönderi tarihi"), 150),
+               ("text", T("Açıklama"), 300))
+    scanned_label = T("Taranan kayıt")
 
     def scan_items(self):
         client, app = self.app.client, self.app
@@ -605,7 +603,7 @@ class MediaListTab(BulkTab):
                     continue
                 seen.add(mid)
                 owner = (m.get("user") or {}).get("username") or ""
-                kind = "Reel" if m.get("product_type") == "clips" else _MEDIA_TYPES.get(m.get("media_type"), "Gönderi")
+                kind = tr("Reel") if m.get("product_type") == "clips" else tr(_MEDIA_TYPES.get(m.get("media_type"), T("Gönderi")))
                 try:
                     date = datetime.fromtimestamp(int(m.get("taken_at"))).strftime("%d.%m.%Y")
                 except (TypeError, ValueError, OSError):
@@ -627,22 +625,22 @@ class MediaListTab(BulkTab):
 
 class LikesTab(MediaListTab):
     key = "likes"
-    nb_title = "Beğeniler"
-    heading = "Tüm beğenileri otomatik kaldır"
-    blurb = ("Beğendiğin tüm gönderi ve reelleri listeler, beğenilerini tek tek, yavaşça kaldırır. Beğenisi KALSIN "
-             "istediğin bir gönderiye ÇİFT TIKLA (yeşil 'Korumalı' olur). Not: yorum beğenileri bu listede yer almaz.")
+    nb_title = T("Beğeniler")
+    heading = T("Tüm beğenileri otomatik kaldır")
+    blurb = (T("Beğendiğin tüm gönderi ve reelleri listeler, beğenilerini tek tek, yavaşça kaldırır. Beğenisi KALSIN "
+             "istediğin bir gönderiye ÇİFT TIKLA (yeşil 'Korumalı' olur). Not: yorum beğenileri bu listede yer almaz."))
     kind = "unlike"
     endpoint = "feed/liked/"
-    scanned_label = "Taranan beğeni"
-    act_label = "Beğeni kalkacak"
-    keep_label = "Beğeni kalacak"
-    done_label = "Beğeni kalktı"
-    confirm_word = "KALDIR"
-    scan_text = "Beğenileri tara ve planla"
-    start_text = "Beğenileri kaldır"
+    scanned_label = T("Taranan beğeni")
+    act_label = T("Beğeni kalkacak")
+    keep_label = T("Beğeni kalacak")
+    done_label = T("Beğeni kalktı")
+    confirm_word = T("KALDIR")
+    scan_text = T("Beğenileri tara ve planla")
+    start_text = T("Beğenileri kaldır")
 
     def confirm_text(self, n_act, n_keep):
-        return f"{n_act} gönderinin beğenisi kaldırılacak, {n_keep} beğeni kalacak."
+        return tr("{0} gönderinin beğenisi kaldırılacak, {1} beğeni kalacak.", n_act, n_keep)
 
     def perform(self, item):
         return bool(self.app.client.media_unlike(item["id"]))
@@ -650,24 +648,23 @@ class LikesTab(MediaListTab):
 
 class SavedTab(MediaListTab):
     key = "saved"
-    nb_title = "Kaydedilenler"
-    heading = "Kaydedilen gönderi ve reelleri temizle"
-    blurb = ("Hesabında kaydettiğin (yer imi) tüm gönderi ve reelleri listeler ve kayıtlarını tek tek, yavaşça kaldırır. "
+    nb_title = T("Kaydedilenler")
+    heading = T("Kaydedilen gönderi ve reelleri temizle")
+    blurb = (T("Hesabında kaydettiğin (yer imi) tüm gönderi ve reelleri listeler ve kayıtlarını tek tek, yavaşça kaldırır. "
              "Kaydı KALSIN istediğin bir gönderiye ÇİFT TIKLA (yeşil 'Korumalı' olur). Gönderinin kendisi silinmez; "
-             "yalnızca senin 'Kaydedilenler' listenden çıkar.")
+             "yalnızca senin 'Kaydedilenler' listenden çıkar."))
     kind = "unsave"
     endpoint = "feed/saved/posts/"
-    scanned_label = "Taranan kayıt"
-    act_label = "Kayıt kalkacak"
-    keep_label = "Kayıt kalacak"
-    done_label = "Kayıt kalktı"
-    confirm_word = "KALDIR"
-    scan_text = "Kaydedilenleri tara ve planla"
-    start_text = "Kayıtları kaldır"
+    scanned_label = T("Taranan kayıt")
+    act_label = T("Kayıt kalkacak")
+    keep_label = T("Kayıt kalacak")
+    done_label = T("Kayıt kalktı")
+    confirm_word = T("KALDIR")
+    scan_text = T("Kaydedilenleri tara ve planla")
+    start_text = T("Kayıtları kaldır")
 
     def confirm_text(self, n_act, n_keep):
-        return (f"{n_act} gönderi/reel 'Kaydedilenler' listenden çıkarılacak, {n_keep} kayıt kalacak. "
-                "Gönderilerin kendisi silinmez.")
+        return (tr("{0} gönderi/reel 'Kaydedilenler' listenden çıkarılacak, {1} kayıt kalacak. Gönderilerin kendisi silinmez.", n_act, n_keep))
 
     def perform(self, item):
         return bool(self.app.client.media_unsave(item["id"]))

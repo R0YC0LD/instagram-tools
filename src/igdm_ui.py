@@ -6,10 +6,12 @@ Pure Tk/ttk (no extra dependencies).
 
 import tkinter as tk
 from tkinter import ttk
+from tkinter import font as tkfont
 
 from igdm_common import (ACCENT, ACCENT_DARK, DANGER, DANGER_DARK, SUCCESS, WARN, PAC, BG, CARD, BORDER, TEXT, MUTED,
                          SIDEBAR, SIDEBAR_HOVER, SIDEBAR_TEXT, FONT, FONT_BOLD)
 from igdm_icon import icon_path, set_window_icon, logo_image  # noqa: F401  (re-exported for the app)
+from igdm_i18n import tr
 
 
 # ------------------------------------------------------------------------------------------ theme
@@ -196,26 +198,26 @@ def _dialog(title, message, kind, buttons, entry=False, initial="", parent=None,
 
 
 def showinfo(title, message, parent=None):
-    _dialog(title, message, "info", [("Tamam", True, "primary")], parent=parent)
+    _dialog(title, message, "info", [(tr("Tamam"), True, "primary")], parent=parent)
 
 
 def showwarning(title, message, parent=None):
-    _dialog(title, message, "warn", [("Tamam", True, "primary")], parent=parent)
+    _dialog(title, message, "warn", [(tr("Tamam"), True, "primary")], parent=parent)
 
 
 def showerror(title, message, parent=None):
-    _dialog(title, message, "error", [("Tamam", True, "primary")], parent=parent)
+    _dialog(title, message, "error", [(tr("Tamam"), True, "primary")], parent=parent)
 
 
 def askyesno(title, message, parent=None):
     """Destructive prompts: the safe answer ('Hayır') is the default for Enter."""
-    return bool(_dialog(title, message, "ask", [("Hayır", False, "secondary"), ("Evet, devam et", True, "danger")],
+    return bool(_dialog(title, message, "ask", [(tr("Hayır"), False, "secondary"), (tr("Evet, devam et"), True, "danger")],
                         parent=parent, default=0))
 
 
 def askstring(title, prompt, parent=None, initialvalue=""):
     """-> entered text, or None when cancelled."""
-    return _dialog(title, prompt, "ask", [("Vazgeç", None, "secondary"), ("Tamam", True, "primary")],
+    return _dialog(title, prompt, "ask", [(tr("Vazgeç"), None, "secondary"), (tr("Tamam"), True, "primary")],
                    entry=True, initial=initialvalue, parent=parent, default=1)
 
 
@@ -259,7 +261,11 @@ class Sidebar(tk.Frame):
         tk.Label(brand, image=logo, bg=SIDEBAR).pack(side="left")
         col = tk.Frame(brand, bg=SIDEBAR)
         col.pack(side="left", fill="x", expand=True, padx=(10, 0))
-        tk.Label(col, text=title, fg="white", bg=SIDEBAR, font=(FONT, 12, "bold"), anchor="w").pack(fill="x")
+        size = 12                                       # shrink the name until it fits, whatever the language
+        room = self.WIDTH - 32 - logo.width() - 14
+        while size > 9 and tkfont.Font(family=FONT, size=size, weight="bold").measure(title) > room:
+            size -= 1
+        tk.Label(col, text=title, fg="white", bg=SIDEBAR, font=(FONT, size, "bold"), anchor="w").pack(fill="x")
         tk.Label(col, text=subtitle, fg="#94a3b8", bg=SIDEBAR, font=(FONT, 9), anchor="w").pack(fill="x")
 
         for section, items in sections:
@@ -424,6 +430,8 @@ def _checkbox_image(checked, disabled=False, size=20):
 
 def apply_checkbox_style(root, st):
     """Replace the clunky default indicator by rounded images (kept referenced on root)."""
+    if "modern.indicator" in st.element_names() and getattr(root, "_chk_imgs", None):
+        return                                        # window rebuilt (language change): style already in place
     root._chk_imgs = (_checkbox_image(False), _checkbox_image(True), _checkbox_image(False, True),
                       _checkbox_image(True, True))
     off, on, off_d, on_d = root._chk_imgs

@@ -1,5 +1,5 @@
-<#
-  Builds dist\IGDMTool.exe (single file, no console window, Pacman icon).
+﻿<#
+  Builds dist\InstagramTools.exe (single file, no console window, Pacman icon).
   Usage:  .\build.ps1            # run tests, then build
           .\build.ps1 -SkipTests
   Works in Windows PowerShell 5.1 and PowerShell 7 (native tools write progress to stderr, so we check
@@ -23,14 +23,14 @@ if (-not $SkipTests) { Run "tests" { & $py tests\run_all.py } }
 
 Run "PyInstaller" {
     & ".\.venv\Scripts\pyinstaller.exe" --noconfirm --clean --onefile --windowed `
-        --name IGDMTool --icon assets\app.ico --paths src `
+        --name InstagramTools --icon assets\app.ico --paths src `
         --collect-all instagrapi --collect-submodules curl_cffi `
         src\igdm_launcher.py
 }
 
-$hash = (Get-FileHash dist\IGDMTool.exe -Algorithm SHA256).Hash
-"SHA256  IGDMTool.exe  $hash" | Set-Content dist\SHA256.txt
-$mb = [math]::Round((Get-Item dist\IGDMTool.exe).Length / 1MB, 1)
+$hash = (Get-FileHash dist\InstagramTools.exe -Algorithm SHA256).Hash
+"SHA256  InstagramTools.exe  $hash" | Set-Content dist\SHA256.txt
+$mb = [math]::Round((Get-Item dist\InstagramTools.exe).Length / 1MB, 1)
 Write-Host ""
-Write-Host "Built dist\IGDMTool.exe ($mb MB)"
+Write-Host "Built dist\InstagramTools.exe ($mb MB)"
 Write-Host "SHA256 $hash"

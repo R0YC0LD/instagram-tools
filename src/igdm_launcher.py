@@ -13,12 +13,13 @@ import threading
 import traceback
 import tkinter as tk
 
-from igdm_meta import APP_TITLE, VERSION
+from igdm_meta import VERSION
 from igdm_icon import set_window_icon
 from igdm_intro import Intro
 from igdm_perf import responsive_ui
+from igdm_i18n import tr, app_title, set_language, initial_language
 
-APP_ID = "IGDMTool.PacmanCleaner.3"
+APP_ID = "OnurTeryakioglu.InstagramTools.31"
 
 
 def single_instance():
@@ -37,6 +38,7 @@ def window_size(root):
 
 
 def main():
+    set_language(initial_language())           # saved choice, else the Windows display language
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
@@ -51,13 +53,13 @@ def main():
     if not first:
         root.withdraw()
         from tkinter import messagebox
-        messagebox.showinfo(APP_TITLE, "Program zaten açık. Aynı anda iki kopya çalıştırılamaz "
-                                       "(istek hızı ikiye katlanır ve Instagram uyarısı riski artar).")
+        messagebox.showinfo(app_title(), tr("Program zaten açık. Aynı anda iki kopya çalıştırılamaz "
+                                       "(istek hızı ikiye katlanır ve Instagram uyarısı riski artar)."))
         return
 
     w, h, x, y = window_size(root)
     root.geometry(f"{w}x{h}+{x}+{y}")
-    root.title(f"{APP_TITLE} v{VERSION}")
+    root.title(f"{app_title()} v{VERSION}")
     root.configure(bg="#050814")
     root._igdm_sized = True                    # tells App not to resize/re-centre again
     set_window_icon(root)
@@ -105,7 +107,7 @@ def main():
         if state["intro"]:
             state["intro"].finish()
         from tkinter import messagebox
-        messagebox.showerror(APP_TITLE, f"Program başlatılamadı:\n\n{err}\n\nAyrıntı:\n{tb[-900:]}")
+        messagebox.showerror(app_title(), tr("Program başlatılamadı:\n\n{0}\n\nAyrıntı:\n{1}", err, tb[-900:]))
         root.destroy()
 
     root.after(30, poll)
