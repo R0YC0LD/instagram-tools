@@ -10,7 +10,7 @@
 
 [![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d6?logo=windows&logoColor=white)](#-quick-start)
 [![Python](https://img.shields.io/badge/python-3.12-3776ab?logo=python&logoColor=white)](#-run-from-source)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License: Proprietary freeware](https://img.shields.io/badge/license-proprietary%20freeware-red)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-231%20checks-brightgreen)](#-tests)
 [![Languages](https://img.shields.io/badge/languages-English%20%C2%B7%20T%C3%BCrk%C3%A7e-blue)](#-languages)
 [![Made in Türkiye](https://img.shields.io/badge/made%20in-T%C3%BCrkiye-e30a17)](#-author)
@@ -184,6 +184,8 @@ The **Speed profile** box in the sidebar applies to all tools. Delays are random
 
 ## 🛠️ Run from source
 
+> ℹ️ The source is published for review. Building, running from source or redistributing your own copy is not covered by the license; see [LICENSE](LICENSE). Use the official [download](https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe).
+
 ```powershell
 git clone https://github.com/R0YC0LD/pacmangram.git
 cd pacmangram
@@ -249,4 +251,8 @@ Instagram: [**@on_r19**](https://instagram.com/on_r19)
 
 ## 📄 License
 
-[MIT](LICENSE) © 2026 Onur Teryakioğlu
+**Proprietary freeware** · © 2026 Onur Teryakioğlu · All rights reserved.
+
+Free for personal use on your own Instagram account(s). The source is published for review only: you may **not** copy, modify, redistribute, re-upload, rebrand, sell or present it as your own. See [LICENSE](LICENSE) ([Türkçe](LICENSE.tr.md)) and [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
+
+> Copies obtained while the project was MIT-licensed (up to v3.2.0) remain under the MIT License as received; the license above applies to all later versions.

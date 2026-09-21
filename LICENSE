@@ -1,21 +1,90 @@
-MIT License
+PACMANGRAM PROPRIETARY FREEWARE LICENSE
+Copyright (c) 2026 Onur Teryakioğlu. All rights reserved.
 
-Copyright (c) 2026 Onur Teryakioğlu
+Turkish translation: see LICENSE.tr.md. Both texts are binding; if they differ,
+the Turkish text prevails for interpretation.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. OWNERSHIP
+   PACMANGRAM (the "Software") - including its source code, compiled builds,
+   user interface, icons, animations, texts, documentation, the name "PACMANGRAM"
+   and its logo - is the exclusive property of Onur Teryakioğlu (the "Owner"),
+   except for third-party components listed in THIRD_PARTY_NOTICES.md, which
+   remain under their own licenses. The Software is protected by the Turkish Law
+   on Intellectual and Artistic Works (No. 5846), the Berne Convention and other
+   applicable copyright laws.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. WHAT YOU MAY DO
+   a) Download and run the official compiled build published by the Owner
+      (Pacmangram.exe from the official GitHub Releases page) on your own
+      computer, free of charge, for personal, non-commercial use on Instagram
+      accounts that you own or are authorized to manage.
+   b) Read the source code published in the official repository solely for
+      personal evaluation, security review and study.
+   No other right is granted. A fork made through GitHub's platform features
+   or a downloaded copy does NOT grant a license.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. WHAT YOU MAY NOT DO WITHOUT THE OWNER'S PRIOR WRITTEN PERMISSION
+   You may not, in whole or in part:
+   a) copy, mirror, re-host or redistribute the Software, its source code, or
+      any build of it (including re-uploading Pacmangram.exe);
+   b) modify, adapt, translate, repackage, rebrand, or create derivative works
+      or "forks" intended for use or distribution;
+   c) sell, rent, lease, sublicense, or offer the Software or any service based
+      on it to third parties, or use it commercially (for example, cleaning
+      accounts of others for payment);
+   d) present the Software or any part of it as your own or as a product of a
+      third party, or remove or alter copyright, author or attribution notices
+      (including in the application's intro screen);
+   e) use the name "PACMANGRAM" or its logo, or any confusingly similar name or
+      logo, for any product or service;
+   f) use the source code, texts or design to train, fine-tune or evaluate
+      machine-learning or AI models, or to build datasets;
+   g) reverse engineer, decompile or disassemble the compiled build, except to
+      the extent applicable law expressly permits despite this restriction;
+   h) circumvent any technical or organizational measure protecting the Software.
+
+4. PREVIOUSLY RELEASED VERSIONS
+   Copies of the Software that a person obtained while it was published under
+   the MIT License (repository state up to and including commit f8523ec,
+   release v3.2.0) remain governed by the MIT License for those copies as
+   received, and that MIT grant is not revoked. This license applies to every
+   later version and to any copy not received under the MIT License.
+
+5. NO CONTRIBUTIONS
+   The Owner does not accept code or content contributions. Anything submitted
+   to the Owner may be used by the Owner without restriction or compensation.
+
+6. RESPONSIBLE USE AND NO AFFILIATION
+   The Software is an independent tool. It is not affiliated with, endorsed by
+   or sponsored by Instagram or Meta Platforms, Inc. You are solely responsible
+   for complying with Instagram's terms and applicable laws, and for any
+   consequences for your account. Only use it on your own account(s).
+
+7. THIRD-PARTY COMPONENTS
+   Open-source libraries used by the Software are covered by their own licenses
+   (see THIRD_PARTY_NOTICES.md). This license does not claim ownership of them
+   and does not restrict rights you have under those licenses.
+
+8. TERMINATION
+   Any breach automatically terminates the permissions in Section 2. The Owner
+   may enforce all rights and remedies available under law, including
+   injunctive relief and compensation.
+
+9. DISCLAIMER OF WARRANTY AND LIABILITY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM, DAMAGES, LOSS
+   OF DATA OR ACCOUNT, OR OTHER LIABILITY ARISING FROM THE USE OF THE SOFTWARE,
+   TO THE EXTENT PERMITTED BY LAW.
+
+10. GOVERNING LAW
+    This license is governed by the laws of the Republic of Türkiye. The
+    competent courts and enforcement offices of the Republic of Türkiye have
+    jurisdiction, without prejudice to the Owner's right to seek relief
+    elsewhere.
+
+11. CONTACT / PERMISSIONS
+    Permission requests: contact the Owner through the GitHub profile
+    https://github.com/R0YC0LD
+
+This is a custom license text and is not legal advice. The Owner may have it
+reviewed by a lawyer.

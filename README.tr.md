@@ -10,7 +10,7 @@
 
 [![Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d6?logo=windows&logoColor=white)](#-hızlı-başlangıç)
 [![Python](https://img.shields.io/badge/python-3.12-3776ab?logo=python&logoColor=white)](#-kaynaktan-çalıştırma)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Lisans: Özel ücretsiz yazılım](https://img.shields.io/badge/lisans-%C3%B6zel%20%C3%BCcretsiz%20yaz%C4%B1l%C4%B1m-red)](LICENSE.tr.md)
 [![Tests](https://img.shields.io/badge/tests-231%20kontrol-brightgreen)](#-testler)
 [![Diller](https://img.shields.io/badge/diller-T%C3%BCrk%C3%A7e%20%C2%B7%20English-blue)](#-diller)
 [![Made in Türkiye](https://img.shields.io/badge/made%20in-T%C3%BCrkiye-e30a17)](#-yapımcı)
@@ -185,6 +185,8 @@ Sol alttaki **Hız profili** tüm araçlar için geçerlidir. Süreler her sefer
 
 ## 🛠️ Kaynaktan çalıştırma
 
+> ℹ️ Kaynak inceleme amacıyla yayımlanır. Kendi kopyanızı derlemek, kaynaktan çalıştırmak veya dağıtmak lisans kapsamında değildir; bkz. [LICENSE.tr.md](LICENSE.tr.md). Resmî [indirme](https://github.com/R0YC0LD/pacmangram/releases/latest/download/Pacmangram.exe) bağlantısını kullanın.
+
 ```powershell
 git clone https://github.com/R0YC0LD/pacmangram.git
 cd pacmangram
@@ -250,4 +252,8 @@ Instagram: [**@on_r19**](https://instagram.com/on_r19)
 
 ## 📄 Lisans
 
-[MIT](LICENSE) © 2026 Onur Teryakioğlu
+**Özel ücretsiz yazılım** · © 2026 Onur Teryakioğlu · Tüm hakları saklıdır.
+
+Kendi Instagram hesabınızda kişisel kullanım için ücretsizdir. Kaynak yalnızca inceleme amacıyla yayımlanır: **kopyalayamaz, değiştiremez, yeniden dağıtamaz, yeniden yükleyemez, marka değiştiremez, satamaz ya da kendi ürününüz gibi gösteremezsiniz.** Bkz. [LICENSE.tr.md](LICENSE.tr.md) ([English](LICENSE)) ve [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md).
+
+> Proje MIT lisanslıyken edinilen kopyalar (v3.2.0’a kadar) alındıkları haliyle MIT Lisansına tabi kalır; yukarıdaki lisans sonraki tüm sürümler için geçerlidir.

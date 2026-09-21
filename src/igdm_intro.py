@@ -47,7 +47,7 @@ def credit_items():
         ("text", spaced("Instagram"), (FONT, 11), DIM, 10),
         ("text", f"@{INSTAGRAM_HANDLE}", (FONT, 26, "bold"), PINK, 92),
 
-        ("text", tr("Ücretsiz ve açık kaynak  ·  MIT Lisansı"), (FONT, 12), MUTED, 8),
+        ("text", tr("Ücretsiz  ·  Tüm hakları saklıdır"), (FONT, 12), MUTED, 8),
         ("text", REPO_URL, (FONT, 12), "#a5b4fc", 92),
 
         ("text", "●   ●   ●", (FONT, 14), PAC, 14),

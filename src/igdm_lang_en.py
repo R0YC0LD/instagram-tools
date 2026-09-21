@@ -268,7 +268,7 @@ CATALOG = {
     "Instagram sınırlama uyardı. Hesabı korumak için DURDURULDU. Birkaç saat sonra tekrar dene.":
         "Instagram issued a rate-limit warning. STOPPED to protect the account. Try again in a few hours.",
     "v{0}  ·  Instagram için Pacman'li temizlik aracı": "v{0}  ·  Instagram toolkit with a Pacman",
-    "Ücretsiz ve açık kaynak  ·  MIT Lisansı": "Free and open source  ·  MIT License",
+    "Ücretsiz  ·  Tüm hakları saklıdır": "Free  ·  All rights reserved",
     "Hesabını hafiflet. Pacman yesin.": "Lighten your account. Let Pacman eat.",
     "Made by": "Made by",
     "Atlamak için tıkla ya da bir tuşa bas": "Click or press any key to skip",
